@@ -1,0 +1,797 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Modal,
+  TextInput,
+  Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
+import AuthService from '../services/AuthService';
+
+interface ActivationEntry {
+  id: string;
+  date: string;
+  time: string;
+  type: 'ossessione' | 'compulsione';
+  symptom: string;
+  intensity: string;
+  description: string;
+}
+
+interface DiaryScreenProps {
+  onClose: () => void;
+  onHomePress: () => void;
+  onExplorePress: () => void;
+  onAddPress: () => void;
+  onActivityPress: (activity: ActivationEntry) => void;
+  activeTab: 'home' | 'explore';
+  testCompleted: boolean;
+  testResult: number | null;
+  onRetakeTest: () => void;
+  userActivities: ActivationEntry[];
+}
+
+const symptomIcons: { [key: string]: string } = {
+  'contamination': 'medical',
+  'harm': 'warning',
+  'control': 'flash',
+  'sexuality': 'heart',
+  'order': 'grid',
+  'detachment': 'link',
+  'error': 'alert-triangle',
+  'superstition': 'star',
+  'invasion': 'eye',
+  'hypochondria': 'fitness',
+  'rituals': 'repeat',
+};
+
+const intensityColors: { [key: string]: string } = {
+  'bassa': '#EFEFEF',
+  'media': '#fcefc6',
+  'alta': '#efb3aa',
+};
+
+function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActivityPress, activeTab, testCompleted, testResult, onRetakeTest, userActivities }: DiaryScreenProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<ActivationEntry | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activations, setActivations] = useState<ActivationEntry[]>([]);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    setActivations(userActivities || []);
+  }, [userActivities]);
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('it-IT', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const getActivationsForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return activations
+      .filter(activation => activation.date === dateString)
+      .sort((a, b) => {
+        // Converte il tempo da formato "H:MM AM/PM" a minuti per confronto corretto
+        const convertTimeToMinutes = (timeStr: string) => {
+          const [time, period] = timeStr.split(' ');
+          const [hours, minutes] = time.split(':').map(Number);
+          let totalMinutes = minutes;
+          
+          if (period === 'AM') {
+            totalMinutes += hours === 12 ? 0 : hours * 60;
+          } else {
+            totalMinutes += hours === 12 ? 12 * 60 : (hours + 12) * 60;
+          }
+          
+          return totalMinutes;
+        };
+        
+        const timeA = convertTimeToMinutes(a.time);
+        const timeB = convertTimeToMinutes(b.time);
+        return timeB - timeA; // Ordine decrescente (più recente prima)
+      });
+  };
+
+  const handleDeleteEntry = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (selectedEntry) {
+      try {
+        await AuthService.deleteActivity(selectedEntry.id);
+        setActivations(prev => prev.filter(a => a.id !== selectedEntry.id));
+        setSelectedEntry(null);
+        setShowDeleteConfirm(false);
+      } catch (error) {
+        console.error('Error deleting activity:', error);
+        Alert.alert('Errore', 'Impossibile eliminare l\'attivazione');
+      }
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
+  const handleEntryPress = (entry: ActivationEntry) => {
+    onActivityPress(entry);
+  };
+
+  const handleDescriptionChange = (text: string) => {
+    setEditedDescription(text);
+    setHasChanges(text !== selectedEntry?.description);
+  };
+
+  const toggleEdit = async () => {
+    if (isEditing && hasChanges && selectedEntry) {
+      try {
+        const updatedEntry = { ...selectedEntry, description: editedDescription };
+        await AuthService.updateActivity(selectedEntry.id, updatedEntry);
+        setActivations(prev => 
+          prev.map(a => a.id === selectedEntry.id ? updatedEntry : a)
+        );
+        setSelectedEntry(updatedEntry);
+        setHasChanges(false);
+      } catch (error) {
+        console.error('Error updating activity:', error);
+        Alert.alert('Errore', 'Impossibile salvare le modifiche');
+      }
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSave = async () => {
+    if (hasChanges && selectedEntry) {
+      try {
+        const updatedEntry = { ...selectedEntry, description: editedDescription };
+        await AuthService.updateActivity(selectedEntry.id, updatedEntry);
+        setActivations(prev => 
+          prev.map(a => a.id === selectedEntry.id ? updatedEntry : a)
+        );
+        setSelectedEntry(updatedEntry);
+        setHasChanges(false);
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Error updating activity:', error);
+        Alert.alert('Errore', 'Impossibile salvare le modifiche');
+      }
+    }
+  };
+
+  const renderCalendar = () => {
+    return (
+      <Modal
+        visible={showCalendar}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.calendarModal}>
+            <View style={styles.calendarHeader}>
+              <Text style={styles.calendarTitle}>Seleziona Data</Text>
+              <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <Calendar
+              onDayPress={(day: any) => {
+                setSelectedDate(new Date(day.timestamp));
+                setShowCalendar(false);
+              }}
+              markedDates={{
+                [selectedDate.toISOString().split('T')[0]]: {
+                  selected: true,
+                  selectedColor: '#8B7CF6',
+                },
+              }}
+              theme={{
+                selectedDayBackgroundColor: '#8B7CF6',
+                todayTextColor: '#8B7CF6',
+                arrowColor: '#8B7CF6',
+              }}
+            />
+            <TouchableOpacity
+              style={styles.calendarSelectButton}
+              onPress={() => setShowCalendar(false)}
+            >
+              <Text style={styles.calendarSelectButtonText}>Conferma</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderEntryDetail = () => {
+    return (
+      <Modal
+        visible={!!selectedEntry}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedEntry(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.entryDetailModal}>
+            <View style={styles.entryDetailHeader}>
+              <TouchableOpacity onPress={() => setSelectedEntry(null)}>
+                <Ionicons name="arrow-back" size={24} color="#333" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeleteEntry}>
+                <Ionicons name="trash" size={24} color="#F44336" />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedEntry && (
+              <ScrollView style={styles.entryDetailContent}>
+                <Text style={styles.entryDetailTitle}>{selectedEntry.symptom}</Text>
+                <Text style={styles.entryDetailTime}>Ore {selectedEntry.time}</Text>
+                
+                <View style={styles.intensityContainer}>
+                  <Ionicons name="alert-circle" size={20} color="#666" />
+                  <Text style={styles.intensityLabel}>Paura di contaminazioni</Text>
+                </View>
+                
+                <Text style={styles.descriptionLabel}>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut laoreet faucibus ipsum, vitae feugiat leo ullamcorper vel.</Text>
+                <Text style={styles.descriptionLabel}>Proin convallis effendit elementum. Nulla vehicula consequat purus non porttitor.</Text>
+                
+                <View style={[
+                  styles.intensityBadge,
+                  { backgroundColor: intensityColors[selectedEntry.intensity] || '#666' }
+                ]}>
+                  <Text style={styles.intensityText}>
+                    Intensità{"\n"}Molto Alta
+                  </Text>
+                </View>
+                
+                <View style={styles.editSection}>
+                  <View style={styles.editHeader}>
+                    <TouchableOpacity 
+                      style={styles.editButton}
+                      onPress={toggleEdit}
+                    >
+                      <Ionicons 
+                        name={isEditing ? "checkmark" : "pencil"} 
+                        size={20} 
+                        color="#8B7CF6" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <TextInput
+                    style={[
+                      styles.descriptionInput,
+                      isEditing && styles.descriptionInputActive
+                    ]}
+                    value={editedDescription}
+                    onChangeText={handleDescriptionChange}
+                    multiline
+                    editable={isEditing}
+                    placeholder="Aggiungi una descrizione..."
+                  />
+                </View>
+              </ScrollView>
+            )}
+            
+            <View style={styles.saveButtonContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.saveButton,
+                  (!hasChanges || !isEditing) && styles.saveButtonDisabled
+                ]}
+                onPress={handleSave}
+                disabled={!hasChanges || !isEditing}
+              >
+                <Text style={[
+                  styles.saveButtonText,
+                  (!hasChanges || !isEditing) && styles.saveButtonTextDisabled
+                ]}>SALVA</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderDeleteConfirmModal = () => {
+    return (
+      <Modal
+        visible={showDeleteConfirm}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={cancelDelete}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModal}>
+            <Text style={styles.deleteModalTitle}>Conferma eliminazione</Text>
+            <Text style={styles.deleteModalText}>
+              Sei sicuro di voler eliminare questa attivazione?
+            </Text>
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.deleteModalButtonCancel]}
+                onPress={cancelDelete}
+              >
+                <Text style={styles.deleteModalButtonCancelText}>Annulla</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.deleteModalButtonConfirm]}
+                onPress={confirmDeleteEntry}
+              >
+                <Text style={styles.deleteModalButtonConfirmText}>Elimina</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const todayActivations = getActivationsForDate(selectedDate);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.dateButton}
+          onPress={() => setShowCalendar(true)}
+        >
+          <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+          <Ionicons name="chevron-down" size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.activationsList}
+        contentContainerStyle={styles.scrollContent}
+      >
+      {testCompleted && testResult !== null && (
+        <View style={styles.testLogCard}>
+          <View style={styles.testLogHeader}>
+            <View style={styles.testLogIcon}>
+              <Ionicons name="clipboard-outline" size={20} color="#8B7CF6" />
+            </View>
+            <Text style={styles.testLogTitle}>Test DOC Completato</Text>
+            <TouchableOpacity onPress={onRetakeTest} style={styles.retakeIconButton}>
+              <Ionicons name="refresh" size={18} color="#8B7CF6" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.testLogContent}>
+            <View style={styles.testLogScoreContainer}>
+              <View style={styles.testLogScoreCircle}>
+                <Text style={styles.testLogScoreText}>{testResult}</Text>
+              </View>
+              <View style={styles.testLogInfo}>
+                <Text style={styles.testLogResultTitle}>Disturbo Ossessivo Compulsivo</Text>
+                <Text style={styles.testLogResultStatus}>PRESENTE</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+      
+      {todayActivations.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>Nessuna attivazione registrata per oggi</Text>
+        </View>
+      ) : (
+        todayActivations.map((activation) => (
+          <TouchableOpacity
+            key={activation.id}
+            style={[
+              styles.activationItem,
+              { borderLeftColor: intensityColors[activation.intensity] || '#666' }
+            ]}
+            onPress={() => handleEntryPress(activation)}
+          >
+            <View style={styles.activationContent}>
+              <View style={styles.activationHeader}>
+                <View style={styles.iconContainer}>
+                  <Ionicons 
+                    name={symptomIcons[activation.symptom] as any || 'document-text'} 
+                    size={18} 
+                    color="#8B7CF6" 
+                  />
+                </View>
+                <Text style={styles.activationType}>
+                  {activation.type === 'ossessione' ? 'Ossessione' : 'Compulsione'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.activationTime}>{activation.time}</Text>
+          </TouchableOpacity>
+        ))
+      )}
+      </ScrollView>
+
+      {renderCalendar()}
+      {renderEntryDetail()}
+      {renderDeleteConfirmModal()}
+      
+
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+  },
+  editButton: {
+    padding: 4,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    textTransform: 'capitalize',
+  },
+  activationsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  activationItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+  },
+  activationContent: {
+    flex: 1,
+  },
+  activationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    iconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#E5E7EB',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    activationType: {
+       fontSize: 16,
+       fontWeight: '600',
+       color: '#333',
+     },
+  activationTime: {
+    fontSize: 14,
+    color: '#8B7CF6',
+    fontWeight: '500',
+    marginLeft: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  entryDetailModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  entryDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  entryDetailContent: {
+    flex: 1,
+    padding: 20,
+  },
+  entryDetailTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textTransform: 'capitalize',
+  },
+  entryDetailTime: {
+    fontSize: 16,
+    color: '#8B7CF6',
+    marginBottom: 20,
+  },
+  intensityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  intensityLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  descriptionLabel: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  intensityBadge: {
+    alignSelf: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderRadius: 50,
+    marginVertical: 20,
+    minWidth: 120,
+    minHeight: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  intensityText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  editSection: {
+    marginTop: 20,
+  },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+  },
+  descriptionInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    backgroundColor: '#F8F9FA',
+  },
+  descriptionInputActive: {
+    borderColor: '#8B7CF6',
+    backgroundColor: 'white',
+  },
+  saveButtonContainer: {
+    padding: 20,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButton: {
+    backgroundColor: '#FF8C42',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#E5E5E5',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  saveButtonTextDisabled: {
+    color: '#999',
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
+  deleteModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    width: '80%',
+    maxWidth: 300,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteModalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteModalButtonCancel: {
+    backgroundColor: '#F5F5F5',
+  },
+  deleteModalButtonConfirm: {
+    backgroundColor: '#F44336',
+  },
+  deleteModalButtonCancelText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  deleteModalButtonConfirmText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  calendarSelectButton: {
+    backgroundColor: '#8B7CF6',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  calendarSelectButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Test Log Styles
+  testLogCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  testLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  testLogIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  testLogTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  retakeIconButton: {
+    padding: 4,
+  },
+  testLogContent: {
+    paddingLeft: 44,
+  },
+  testLogScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  testLogScoreCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#8B7CF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  testLogScoreText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  testLogInfo: {
+    flex: 1,
+  },
+  testLogResultTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 2,
+  },
+  testLogResultStatus: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#8B7CF6',
+  },
+});
+
+export default DiaryScreen;
