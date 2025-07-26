@@ -8,10 +8,13 @@ import {
   Modal,
   TextInput,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import AuthService from '../services/AuthService';
+
+import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 
 interface ActivationEntry {
   id: string;
@@ -34,6 +37,7 @@ interface DiaryScreenProps {
   testResult: number | null;
   onRetakeTest: () => void;
   userActivities: ActivationEntry[];
+  onProfilePress?: () => void;
 }
 
 const symptomIcons: { [key: string]: string } = {
@@ -56,7 +60,7 @@ const intensityColors: { [key: string]: string } = {
   'alta': '#efb3aa',
 };
 
-function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActivityPress, activeTab, testCompleted, testResult, onRetakeTest, userActivities }: DiaryScreenProps) {
+function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActivityPress, activeTab, testCompleted, testResult, onRetakeTest, userActivities, onProfilePress }: DiaryScreenProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ActivationEntry | null>(null);
@@ -83,19 +87,27 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
     return activations
       .filter(activation => activation.date === dateString)
       .sort((a, b) => {
-        // Converte il tempo da formato "H:MM AM/PM" a minuti per confronto corretto
+        // Converte il tempo da formato "H:MM AM/PM" o "HH:MM" a minuti per confronto corretto
         const convertTimeToMinutes = (timeStr: string) => {
-          const [time, period] = timeStr.split(' ');
-          const [hours, minutes] = time.split(':').map(Number);
-          let totalMinutes = minutes;
-          
-          if (period === 'AM') {
-            totalMinutes += hours === 12 ? 0 : hours * 60;
+          // Controlla se il formato include AM/PM
+          if (timeStr.includes(' ')) {
+            // Formato 12 ore (H:MM AM/PM)
+            const [time, period] = timeStr.split(' ');
+            const [hours, minutes] = time.split(':').map(Number);
+            let totalMinutes = minutes;
+            
+            if (period === 'AM') {
+              totalMinutes += hours === 12 ? 0 : hours * 60;
+            } else {
+              totalMinutes += hours === 12 ? 12 * 60 : (hours + 12) * 60;
+            }
+            
+            return totalMinutes;
           } else {
-            totalMinutes += hours === 12 ? 12 * 60 : (hours + 12) * 60;
+            // Formato 24 ore (HH:MM)
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
           }
-          
-          return totalMinutes;
         };
         
         const timeA = convertTimeToMinutes(a.time);
@@ -127,7 +139,13 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   };
 
   const handleEntryPress = (entry: ActivationEntry) => {
-    onActivityPress(entry);
+    if (isExerciseEntry(entry)) {
+      const duration = getExerciseDuration(entry.description);
+      const entryWithDuration = { ...entry, duration };
+      onActivityPress(entryWithDuration);
+    } else {
+      onActivityPress(entry);
+    }
   };
 
   const handleDescriptionChange = (text: string) => {
@@ -343,6 +361,33 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
 
   const todayActivations = getActivationsForDate(selectedDate);
 
+  const getExerciseImage = (description: string) => {
+    if (description.includes('Respirazione')) {
+      return require('../assets/exercises/body-scan.png');
+    } else if (description.includes('Gratitudine')) {
+      return require('../assets/exercises/gratitudine-mattino.png');
+    } else if (description.includes('Scrittura')) {
+      return require('../assets/exercises/scrittura.png');
+    } else if (description.includes('Contrasta')) {
+      return require('../assets/exercises/contrasta-compulsione.png');
+    }
+    return require('../assets/exercises/body-scan.png');
+  };
+
+  const isExerciseEntry = (activation: ActivationEntry) => {
+    return activation.description.includes('Esercizio completato:');
+  };
+
+  const getExerciseName = (description: string) => {
+    const match = description.match(/Esercizio completato: (.+?)\. Durata:/);
+    return match ? match[1] : 'Esercizio';
+  };
+
+  const getExerciseDuration = (description: string) => {
+    const match = description.match(/Durata: (.+)/);
+    return match ? match[1] : '';
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -389,32 +434,44 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
           <Text style={styles.emptyStateText}>Nessuna attivazione registrata per oggi</Text>
         </View>
       ) : (
-        todayActivations.map((activation) => (
-          <TouchableOpacity
-            key={activation.id}
-            style={[
-              styles.activationItem,
-              { borderLeftColor: intensityColors[activation.intensity] || '#666' }
-            ]}
-            onPress={() => handleEntryPress(activation)}
-          >
-            <View style={styles.activationContent}>
-              <View style={styles.activationHeader}>
-                <View style={styles.iconContainer}>
-                  <Ionicons 
-                    name={symptomIcons[activation.symptom] as any || 'document-text'} 
-                    size={18} 
-                    color="#8B7CF6" 
-                  />
+        todayActivations.map((activation) => {
+          const isExercise = isExerciseEntry(activation);
+          return (
+            <TouchableOpacity
+              key={activation.id}
+              style={[
+                styles.activationItem,
+                { borderLeftColor: isExercise ? '#8B7CF6' : (intensityColors[activation.intensity] || '#666') }
+              ]}
+              onPress={() => handleEntryPress(activation)}
+            >
+              <View style={styles.activationContent}>
+                <View style={styles.activationHeader}>
+                  {isExercise ? (
+                    <View style={styles.exerciseImageContainer}>
+                      <Image 
+                        source={getExerciseImage(activation.description)}
+                        style={styles.exerciseImage}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.iconContainer}>
+                      <Ionicons 
+                        name={symptomIcons[activation.symptom] as any || 'document-text'} 
+                        size={18} 
+                        color="#8B7CF6" 
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.activationType}>
+                    {isExercise ? getExerciseName(activation.description) : (activation.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
+                  </Text>
                 </View>
-                <Text style={styles.activationType}>
-                  {activation.type === 'ossessione' ? 'Ossessione' : 'Compulsione'}
-                </Text>
               </View>
-            </View>
-            <Text style={styles.activationTime}>{activation.time}</Text>
-          </TouchableOpacity>
-        ))
+              <Text style={styles.activationTime}>{activation.time}</Text>
+            </TouchableOpacity>
+          );
+        })
       )}
       </ScrollView>
 
@@ -753,6 +810,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  exerciseImageContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exerciseImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   retakeIconButton: {
     padding: 4,

@@ -30,21 +30,18 @@ export default function Step1({ onNext, onClose }: Step1Props) {
   const currentDay = now.getDate().toString();
   const currentMonth = now.toLocaleDateString('it-IT', { month: 'long' });
   const currentYear = now.getFullYear().toString();
-  const currentHour = now.getHours();
+  const currentHour = now.getHours().toString().padStart(2, '0');
   const currentMinute = now.getMinutes().toString().padStart(2, '0');
-  const currentPeriod = currentHour >= 12 ? 'PM' : 'AM';
-  const displayHour = currentHour > 12 ? (currentHour - 12).toString() : currentHour === 0 ? '12' : currentHour.toString();
   
   const [date, setDate] = useState(`${currentDay} ${currentMonth} ${currentYear}`);
-  const [time, setTime] = useState(`${displayHour}:${currentMinute} ${currentPeriod}`);
+  const [time, setTime] = useState(`${currentHour}:${currentMinute}`);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedDay, setSelectedDay] = useState(currentDay);
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedHour, setSelectedHour] = useState(displayHour);
+  const [selectedHour, setSelectedHour] = useState(currentHour);
   const [selectedMinute, setSelectedMinute] = useState(currentMinute);
-  const [selectedPeriod, setSelectedPeriod] = useState(currentPeriod);
 
   const toggleSymptom = (symptomId: string) => {
     setSelectedSymptoms(prev => 
@@ -184,7 +181,7 @@ export default function Step1({ onNext, onClose }: Step1Props) {
                 <Text style={styles.modalCancel}>Annulla</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => {
-                setTime(`${selectedHour}:${selectedMinute} ${selectedPeriod}`);
+                setTime(`${selectedHour}:${selectedMinute}`);
                 setShowTimePicker(false);
               }}>
                 <Text style={styles.modalDone}>Fatto</Text>
@@ -192,7 +189,7 @@ export default function Step1({ onNext, onClose }: Step1Props) {
             </View>
             <View style={styles.pickerContainer}>
               <ScrollView style={styles.picker} showsVerticalScrollIndicator={false}>
-                {Array.from({length: 12}, (_, i) => (i + 1).toString()).map((hour) => (
+                {Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0')).map((hour) => (
                   <TouchableOpacity
                     key={hour}
                     style={[styles.pickerItem, selectedHour === hour && styles.pickerItemSelected]}
@@ -210,17 +207,6 @@ export default function Step1({ onNext, onClose }: Step1Props) {
                     onPress={() => setSelectedMinute(minute)}
                   >
                     <Text style={[styles.pickerText, selectedMinute === minute && styles.pickerTextSelected]}>{minute}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <ScrollView style={styles.picker} showsVerticalScrollIndicator={false}>
-                {['AM', 'PM'].map((period) => (
-                  <TouchableOpacity
-                    key={period}
-                    style={[styles.pickerItem, selectedPeriod === period && styles.pickerItemSelected]}
-                    onPress={() => setSelectedPeriod(period)}
-                  >
-                    <Text style={[styles.pickerText, selectedPeriod === period && styles.pickerTextSelected]}>{period}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
-import ExerciseService from '../services/ExerciseService';
+import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 
 const circleSvg = `<svg width="247" height="241" viewBox="0 0 247 241" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_157_11949)">
@@ -75,8 +75,16 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
   const [dailyExercises, setDailyExercises] = React.useState<Exercise[]>([]);
 
   React.useEffect(() => {
-    const exercises = ExerciseService.getDailyRecommendations();
-    setDailyExercises(exercises);
+    const loadExercises = async () => {
+      try {
+        const exercises = await ExerciseServiceAdapter.getDailyRecommendations();
+        setDailyExercises(exercises);
+      } catch (error) {
+        console.error('Errore nel caricamento esercizi:', error);
+      }
+    };
+    
+    loadExercises();
   }, []);
 
   return (

@@ -17,11 +17,40 @@ interface ProfileScreenProps {
 export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding }: ProfileScreenProps) {
   const [showSettings, setShowSettings] = useState(false);
 
-  // Calcola il numero totale di attivazioni (ossessioni + compulsioni)
-  const totalActivations = userActivities.length;
+  // Calcola il numero totale di attivazioni (ossessioni + compulsioni, escludendo esercizi)
+  const totalActivations = userActivities.filter(activity => 
+    !activity.description.includes('Esercizio completato:')
+  ).length;
   
-  // Gli esercizi sono una funzionalità futura, per ora mostriamo 0
-  const totalExercises = 0;
+  // Calcola il numero totale di esercizi completati
+  const totalExercises = userActivities.filter(activity => 
+    activity.description.includes('Esercizio completato:')
+  ).length;
+
+  // Funzione per verificare se in una data è stato completato un esercizio
+  const hasExerciseOnDate = (date: string) => {
+    return userActivities.some(activity => 
+      activity.date === date && activity.description.includes('Esercizio completato:')
+    );
+  };
+
+  // Genera le date per la settimana corrente
+  const getWeekDates = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = domenica, 1 = lunedì, etc.
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - currentDay + 1); // Inizia da lunedì
+    
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      weekDates.push(date.toISOString().split('T')[0]);
+    }
+    return weekDates;
+  };
+
+  const weekDates = getWeekDates();
 
   const renderSettings = () => {
     return (
@@ -156,27 +185,35 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Esercizi</Text>
           <View style={styles.exerciseCalendar}>
-            {['Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom', 'Lun'].map((day, index) => (
-              <View key={day} style={styles.calendarDay}>
-                <View style={[styles.calendarDot, index === 6 && styles.calendarDotActive]} />
-                <Text style={styles.calendarDayText}>{day}</Text>
-                <Text style={styles.calendarDayNumber}>{10 + index}</Text>
-              </View>
-            ))}
+            {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day, index) => {
+              const date = weekDates[index];
+              const dayNumber = new Date(date).getDate();
+              const hasExercise = hasExerciseOnDate(date);
+              
+              return (
+                <View key={day} style={styles.calendarDay}>
+                  <View style={[styles.calendarDot, hasExercise && styles.calendarDotActive]} />
+                  <Text style={styles.calendarDayText}>{day}</Text>
+                  <Text style={styles.calendarDayNumber}>{dayNumber}</Text>
+                </View>
+              );
+            })}
           </View>
-          <Text style={styles.exerciseText}>Gli esercizi saranno disponibili presto</Text>
+
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Obiettivi settimanali</Text>
           <View style={styles.goalSection}>
-            <Text style={styles.goalText}>1 di 3</Text>
+            <Text style={styles.goalText}>{Math.min(weekDates.filter(date => hasExerciseOnDate(date)).length, 3)} di 3</Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '33%' }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(weekDates.filter(date => hasExerciseOnDate(date)).length / 3 * 100, 100)}%` }]} />
             </View>
           </View>
           <Text style={styles.goalDescription}>
-            Se esegui gli esercizi tre volte a settimana, i nostri dati dimostrano che ci sono miglioramenti tangibili.
+            {weekDates.filter(date => hasExerciseOnDate(date)).length >= 3 
+              ? "🎉 Fantastico! Hai raggiunto il tuo obiettivo settimanale. La costanza è la chiave del successo e della crescita personale!"
+              : "Se esegui gli esercizi tre volte a settimana, i nostri dati dimostrano che ci sono miglioramenti tangibili."}
           </Text>
         </View>
 

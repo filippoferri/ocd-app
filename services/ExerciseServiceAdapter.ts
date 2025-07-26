@@ -1,9 +1,9 @@
 // Adapter per la migrazione graduale da ExerciseService locale a Supabase
 // Questo servizio permette di passare gradualmente a Supabase mantenendo la compatibilità
 
-import { Exercise } from '../types/Exercise';
+import { Exercise, ExerciseProgress } from '../types/Exercise';
 import ExerciseService from './ExerciseService';
-import SupabaseExerciseService from './SupabaseService';
+import { SupabaseExerciseService } from './SupabaseExerciseService';
 
 type DataSource = 'local' | 'supabase' | 'hybrid';
 
@@ -48,6 +48,120 @@ class ExerciseServiceAdapter {
       case 'hybrid':
       default:
         return this.getHybridExerciseById(id);
+    }
+  }
+
+  // Ottieni esercizi per categoria
+  static async getExercisesByCategory(category: string): Promise<Exercise[]> {
+    switch (this.dataSource) {
+      case 'local':
+        return ExerciseService.getExercisesByCategory(category);
+      
+      case 'supabase':
+        try {
+          return await SupabaseExerciseService.getExercisesByCategory(category);
+        } catch (error) {
+          if (this.fallbackToLocal) {
+            return ExerciseService.getExercisesByCategory(category);
+          }
+          return [];
+        }
+      
+      case 'hybrid':
+      default:
+        try {
+          const supabaseExercises = await SupabaseExerciseService.getExercisesByCategory(category);
+          return supabaseExercises.length > 0 ? supabaseExercises : ExerciseService.getExercisesByCategory(category);
+        } catch (error) {
+          return ExerciseService.getExercisesByCategory(category);
+        }
+    }
+  }
+
+  // Ottieni raccomandazioni giornaliere
+  static async getDailyRecommendations(): Promise<Exercise[]> {
+    switch (this.dataSource) {
+      case 'local':
+        return ExerciseService.getDailyRecommendations();
+      
+      case 'supabase':
+        try {
+          return await SupabaseExerciseService.getDailyRecommendations();
+        } catch (error) {
+          if (this.fallbackToLocal) {
+            return ExerciseService.getDailyRecommendations();
+          }
+          return [];
+        }
+      
+      case 'hybrid':
+      default:
+        try {
+          const supabaseExercises = await SupabaseExerciseService.getDailyRecommendations();
+          return supabaseExercises.length > 0 ? supabaseExercises : ExerciseService.getDailyRecommendations();
+        } catch (error) {
+          return ExerciseService.getDailyRecommendations();
+        }
+    }
+  }
+
+  // Salva progresso esercizio
+  static async saveExerciseProgress(progress: ExerciseProgress): Promise<void> {
+    switch (this.dataSource) {
+      case 'local':
+        return ExerciseService.saveExerciseProgress(progress);
+      
+      case 'supabase':
+        try {
+          return await SupabaseExerciseService.saveExerciseProgress(progress);
+        } catch (error) {
+          if (this.fallbackToLocal) {
+            return ExerciseService.saveExerciseProgress(progress);
+          }
+          throw error;
+        }
+      
+      case 'hybrid':
+      default:
+        try {
+          await SupabaseExerciseService.saveExerciseProgress(progress);
+        } catch (error) {
+          console.warn('Errore salvataggio su Supabase, usando locale:', error);
+          return ExerciseService.saveExerciseProgress(progress);
+        }
+    }
+  }
+
+  // Ottieni progresso utente
+  static async getUserExerciseProgress(userId?: string): Promise<ExerciseProgress[]> {
+    switch (this.dataSource) {
+      case 'local':
+        return ExerciseService.getUserExerciseProgress();
+      
+      case 'supabase':
+        if (!userId) {
+          throw new Error('userId richiesto per Supabase');
+        }
+        try {
+          return await SupabaseExerciseService.getUserExerciseProgress(userId);
+        } catch (error) {
+          if (this.fallbackToLocal) {
+            return ExerciseService.getUserExerciseProgress();
+          }
+          throw error;
+        }
+      
+      case 'hybrid':
+      default:
+        try {
+          if (userId) {
+            return await SupabaseExerciseService.getUserExerciseProgress(userId);
+          } else {
+            return ExerciseService.getUserExerciseProgress();
+          }
+        } catch (error) {
+          return ExerciseService.getUserExerciseProgress();
+        }
     }
   }
 
@@ -228,12 +342,12 @@ class ExerciseServiceAdapter {
         try {
           await SupabaseExerciseService.createExercise({
             name: exercise.name,
-            intro_text: exercise.introText,
-            benefits_text: exercise.benefitsText,
-            objective_text: exercise.objectiveText,
+            introText: exercise.introText,
+            benefitsText: exercise.benefitsText,
+            objectiveText: exercise.objectiveText,
             duration: exercise.duration,
             image: exercise.image,
-            audio_guide: exercise.audioGuide,
+            audioGuide: exercise.audioGuide,
             steps: exercise.steps,
             category: exercise.category,
             difficulty: exercise.difficulty

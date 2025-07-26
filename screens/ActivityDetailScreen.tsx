@@ -20,6 +20,7 @@ interface ActivityDetailScreenProps {
     intensity: string;
     description: string;
     time: string;
+    duration?: string; // Per gli esercizi
   };
   onBack: () => void;
   onSave: (description: string) => void;
@@ -87,6 +88,9 @@ export default function ActivityDetailScreen({
   const [description, setDescription] = useState(activity.description);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Verifica se è un esercizio (ha una durata)
+  const isExercise = activity.duration !== undefined;
 
   const handleSave = () => {
     if (hasChanges) {
@@ -131,61 +135,78 @@ export default function ActivityDetailScreen({
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Title */}
         <Text style={styles.title}>
-          {activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione'}
+          {isExercise ? (
+            activity.description.includes('Esercizio completato:') 
+              ? activity.description.match(/Esercizio completato: (.+?)\. Durata:/)?.[1] || 'Esercizio'
+              : 'Esercizio'
+          ) : (activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
         </Text>
 
-        {/* Symptom Pill */}
-        <View style={styles.symptomPill}>
-          <Ionicons 
-            name={symptomIcons[activity.symptom] as any || 'document-text'} 
-            size={16} 
-            color="#666" 
-          />
-          <Text style={styles.symptomText}>
-            {symptomLabels[activity.symptom] || activity.symptom}
-          </Text>
-        </View>
-
-        {/* Description */}
-        <TextInput
-          style={styles.descriptionInput}
-          value={description}
-          onChangeText={handleDescriptionChange}
-          placeholder="Descrivi la tua esperienza..."
-          multiline
-          textAlignVertical="top"
-        />
-
-        {/* Intensity Circle */}
-        <View style={styles.intensityContainer}>
-          <View style={[
-            styles.intensityCircle,
-            { 
-              backgroundColor: intensityColors[activity.intensity] || '#666',
-              borderColor: intensityBorderColors[activity.intensity] || 'rgba(102, 102, 102, 0.5)',
-              borderWidth: 10,
-            }
-          ]}>
-            <Text style={[
-              styles.intensityLabel,
-              { color: intensityTextColors[activity.intensity] || '#666' }
-            ]}>Intensità</Text>
-            <Text style={[
-              styles.intensityValue,
-              { color: intensityTextColors[activity.intensity] || '#666' }
-            ]}>
-              {intensityLabels[activity.intensity] || activity.intensity}
-            </Text>
+        {isExercise ? (
+          /* Exercise Content */
+          <View style={styles.exerciseContent}>
+            <Text style={styles.exerciseDescription}>Esercizio completato</Text>
+            <Text style={styles.exerciseDuration}>Durata: {activity.duration}</Text>
           </View>
-        </View>
+        ) : (
+          /* Regular Activity Content */
+          <>
+            {/* Symptom Pill */}
+            <View style={styles.symptomPill}>
+              <Ionicons 
+                name={symptomIcons[activity.symptom] as any || 'document-text'} 
+                size={16} 
+                color="#666" 
+              />
+              <Text style={styles.symptomText}>
+                {symptomLabels[activity.symptom] || activity.symptom}
+              </Text>
+            </View>
+
+            {/* Description */}
+            <TextInput
+              style={styles.descriptionInput}
+              value={description}
+              onChangeText={handleDescriptionChange}
+              placeholder="Descrivi la tua esperienza..."
+              multiline
+              textAlignVertical="top"
+            />
+
+            {/* Intensity Circle */}
+            <View style={styles.intensityContainer}>
+              <View style={[
+                styles.intensityCircle,
+                { 
+                  backgroundColor: intensityColors[activity.intensity] || '#666',
+                  borderColor: intensityBorderColors[activity.intensity] || 'rgba(102, 102, 102, 0.5)',
+                  borderWidth: 10,
+                }
+              ]}>
+                <Text style={[
+                  styles.intensityLabel,
+                  { color: intensityTextColors[activity.intensity] || '#666' }
+                ]}>Intensità</Text>
+                <Text style={[
+                  styles.intensityValue,
+                  { color: intensityTextColors[activity.intensity] || '#666' }
+                ]}>
+                  {intensityLabels[activity.intensity] || activity.intensity}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
 
-      {/* Fixed Bottom Button */}
-      <ButtonNav 
-        label="SALVA" 
-        onPress={handleSave}
-        disabled={!hasChanges}
-      />
+      {/* Fixed Bottom Button - Solo per attività normali */}
+      {!isExercise && (
+        <ButtonNav 
+          label="SALVA" 
+          onPress={handleSave}
+          disabled={!hasChanges}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -370,5 +391,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  exerciseContent: {
+    marginBottom: 40,
+  },
+  exerciseDescription: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  exerciseDuration: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '400',
   },
 });

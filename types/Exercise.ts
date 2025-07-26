@@ -1,9 +1,11 @@
 export interface ExerciseStep {
   id: string;
-  type: 'list' | 'textarea';
+  type: 'default' | 'withaudio' | 'withtextarea' | 'withbreath';
   title: string;
-  content?: string[]; // Per i passi di tipo lista
-  placeholder?: string; // Per i passi di tipo textarea
+  content?: string[]; // Per i passi di tipo lista/linee guida
+  placeholder?: string; // Per i passi di tipo withtextarea
+  audioFile?: string; // Path del file audio per step withaudio e withbreath
+  duration?: number; // Durata in minuti per questo step
 }
 
 export interface Exercise {

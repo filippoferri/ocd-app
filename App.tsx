@@ -228,6 +228,23 @@ export default function App() {
     // Potresti voler aggiungere qui logica per aggiornare statistiche o mostrare congratulazioni
   };
 
+  const handleNavigateToDiary = async () => {
+    setShowExerciseDetail(false);
+    setSelectedExercise(null);
+    // Aggiorna le attività utente per includere l'esercizio appena completato
+    try {
+      const activities = await AuthService.getUserActivities();
+      setUserActivities(activities);
+    } catch (error) {
+      console.error('Errore nel caricamento attività:', error);
+    }
+    // Naviga al tab Home e poi al DiaryScreen
+    setActiveTab('home');
+    setCurrentScreen('diary');
+    // Forza il refresh del DiaryScreen
+    setDiaryRefreshKey(prev => prev + 1);
+  };
+
   // Verifica se l'utente è già autenticato all'avvio
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -287,7 +304,7 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="dark" />
       
-      {currentScreen !== 'OCDTest' && activeTab !== 'explore' && (
+      {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
         <TopNav 
           currentScreen={currentScreen}
           onToggle={handleToggleScreen}
@@ -327,15 +344,38 @@ export default function App() {
               setCurrentScreen('OCDTest');
             }}
             userActivities={userActivities}
+            onProfilePress={handleAvatarPress}
           />
         )}
         
         {currentScreen === 'OCDTest' && (
           <OCDTestScreen 
             onBack={() => setCurrentScreen('home')}
-            onTestComplete={(score: number) => {
+            onTestComplete={async (score: number) => {
               setTestCompleted(true);
               setTestResult(score);
+              
+              // Salva il completamento del test come attività
+              const now = new Date();
+              const activity = {
+                id: `test_${Date.now()}`,
+                date: now.toISOString().split('T')[0],
+                time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                type: 'ossessione' as const,
+                symptom: 'Test DOC',
+                intensity: 'completato',
+                description: `Test DOC completato. Punteggio: ${score}%`,
+              };
+              
+              try {
+                await AuthService.addActivity(activity);
+                // Aggiorna la lista delle attività
+                const updatedActivities = await AuthService.getUserActivities();
+                setUserActivities(updatedActivities);
+              } catch (error) {
+                console.error('Errore nel salvare il completamento del test:', error);
+              }
+              
               setCurrentScreen('home');
             }}
           />
@@ -425,6 +465,7 @@ export default function App() {
              exercise={selectedExercise}
              onBack={handleCloseExerciseDetail}
              onComplete={handleExerciseComplete}
+             onNavigateToDiary={handleNavigateToDiary}
            />
          )}
       </Modal>
