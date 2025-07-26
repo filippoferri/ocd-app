@@ -189,8 +189,9 @@ const styles = StyleSheet.create({
   },
   moodContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
     marginBottom: 120,
   },
   moodButton: {
