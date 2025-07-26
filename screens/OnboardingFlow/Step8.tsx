@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
@@ -10,6 +10,7 @@ interface Step8Props {
 
 export default function Step8({ onNext, onBack }: Step8Props) {
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const handleContinue = () => {
     if (selectedLevel !== null) {
@@ -23,9 +24,7 @@ export default function Step8({ onNext, onBack }: Step8Props) {
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#333" />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
       <View style={styles.content}>
@@ -45,23 +44,38 @@ export default function Step8({ onNext, onBack }: Step8Props) {
             <Text style={styles.scaleLabel}>Massima</Text>
           </View>
           
-          <View style={styles.numbersContainer}>
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((number) => (
-              <TouchableOpacity
-                key={number}
-                style={[
-                  styles.numberButton,
-                  selectedLevel === number && styles.numberButtonSelected
-                ]}
-                onPress={() => setSelectedLevel(number)}
-              >
-                <Text style={[
-                  styles.numberText,
-                  selectedLevel === number && styles.numberTextSelected
-                ]}>{number}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity 
+            style={styles.selectButton}
+            onPress={() => setShowDropdown(!showDropdown)}
+          >
+            <Text style={styles.selectText}>
+              {selectedLevel ? `Livello ${selectedLevel}` : 'Seleziona un livello...'}
+            </Text>
+            <Ionicons 
+              name={showDropdown ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color="#666" 
+            />
+          </TouchableOpacity>
+          
+          {showDropdown && (
+            <View style={styles.dropdown}>
+              <ScrollView style={styles.scrollContainer} nestedScrollEnabled={true}>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((number) => (
+                  <TouchableOpacity
+                    key={number}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedLevel(number);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownText}>Livello {number}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
 
@@ -90,28 +104,12 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  closeButton: {
+  placeholder: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   content: {
     flex: 1,
@@ -128,8 +126,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
   },
   imageContainer: {
-    width: 120,
-    height: 120,
+    width: 200,
+    height: 200,
     marginBottom: 60,
   },
   image: {
@@ -150,37 +148,52 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
-  numbersContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  numberButton: {
-    width: 50,
+  selectButton: {
+    width: '100%',
     height: 50,
-    borderRadius: 25,
     backgroundColor: 'white',
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  selectText: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  dropdown: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginTop: 8,
+    height: 250,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  numberButtonSelected: {
-    borderColor: '#8B7CF6',
-    backgroundColor: '#8B7CF6',
+  scrollContainer: {
+    flex: 1,
   },
-  numberText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#666',
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  numberTextSelected: {
-    color: 'white',
+  dropdownText: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '500',
   },
 });

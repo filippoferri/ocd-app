@@ -9,12 +9,9 @@ interface Step7Props {
 }
 
 const durationOptions = [
-  'Meno di 6 mesi',
-  '6 mesi - 1 anno',
-  '1 - 2 anni',
-  '2 - 5 anni',
-  'Più di 5 anni',
-  'Non lo so'
+  'Da pochi mesi',
+  'Da un anno',
+  'Da anni'
 ];
 
 export default function Step7({ onNext, onBack }: Step7Props) {
@@ -32,9 +29,7 @@ export default function Step7({ onNext, onBack }: Step7Props) {
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#333" />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
       <View style={styles.content}>
@@ -92,55 +87,39 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  closeButton: {
+  placeholder: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
     lineHeight: 30,
   },
   imageContainer: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-    marginBottom: 40,
+    width: 200,
+    height: 200,
+    marginBottom: 60,
   },
   image: {
     width: '100%',
     height: '100%',
   },
   optionsContainer: {
-    flex: 1,
-    gap: 12,
+    width: '100%',
+    gap: 16,
   },
   optionButton: {
     backgroundColor: 'white',
