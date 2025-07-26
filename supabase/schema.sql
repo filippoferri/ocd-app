@@ -68,8 +68,8 @@ CREATE POLICY "Users can view and insert their own progress" ON exercise_progres
 INSERT INTO exercises (name, intro_text, benefits_text, objective_text, duration, image, steps, category, difficulty) VALUES
 (
   'Respirazione Consapevole',
-  'Un esercizio di respirazione guidata per ridurre l\'ansia e i pensieri ossessivi.',
-  'Riduce l\'ansia, calma la mente, migliora la concentrazione, diminuisce i pensieri intrusivi',
+  'Un esercizio di respirazione guidata per ridurre l''ansia e i pensieri ossessivi.',
+  'Riduce l''ansia, calma la mente, migliora la concentrazione, diminuisce i pensieri intrusivi',
   'Raggiungere uno stato di calma mentale',
   10,
   'breathing.jpg',
@@ -84,7 +84,7 @@ INSERT INTO exercises (name, intro_text, benefits_text, objective_text, duration
       "id": "step2",
       "type": "textarea",
       "title": "Riflessione",
-      "placeholder": "Come ti senti dopo l\'esercizio?"
+      "placeholder": "Come ti senti dopo l''esercizio?"
     }
   ]'::jsonb,
   'respirazione',
@@ -92,8 +92,8 @@ INSERT INTO exercises (name, intro_text, benefits_text, objective_text, duration
 ),
 (
   'Mindfulness del Momento Presente',
-  'Esercizio per ancorare l\'attenzione al presente e ridurre i pensieri ossessivi.',
-  'Aumenta la consapevolezza, riduce i pensieri ripetitivi, migliora l\'autocontrollo',
+  'Esercizio per ancorare l''attenzione al presente e ridurre i pensieri ossessivi.',
+  'Aumenta la consapevolezza, riduce i pensieri ripetitivi, migliora l''autocontrollo',
   'Sviluppare presenza mentale',
   15,
   'mindfulness.jpg',
