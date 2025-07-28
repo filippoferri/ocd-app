@@ -16,7 +16,6 @@ export interface Exercise {
   objectiveText: string; // Obiettivo (molto corto)
   duration: number; // in minuti
   image: string; // path dell'immagine square
-  audioGuide: string; // path del file .mp3
   steps: ExerciseStep[];
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';

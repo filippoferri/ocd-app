@@ -41,6 +41,16 @@ const symptomIcons: { [key: string]: string } = {
   'rituals': 'repeat',
 };
 
+// Funzione per ottenere l'icona del sintomo
+const getSymptomIcon = (symptomId: string): string => {
+  // Se è un sintomo personalizzato (inizia con 'custom-'), usa l'icona predefinita
+  if (symptomId.startsWith('custom-')) {
+    return 'add-circle';
+  }
+  // Altrimenti usa la mappatura esistente
+  return symptomIcons[symptomId] || 'help-circle';
+};
+
 const symptomLabels: { [key: string]: string } = {
   'contamination': 'Paura di contaminazioni',
   'harm': 'Azioni o pensieri lesivi',
@@ -154,7 +164,7 @@ export default function ActivityDetailScreen({
             {/* Symptom Pill */}
             <View style={styles.symptomPill}>
               <Ionicons 
-                name={symptomIcons[activity.symptom] as any || 'document-text'} 
+                name={getSymptomIcon(activity.symptom) as any} 
                 size={16} 
                 color="#666" 
               />

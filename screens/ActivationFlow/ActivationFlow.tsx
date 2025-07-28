@@ -5,10 +5,12 @@ import Step2 from './Step2';
 import Step3 from './Step3';
 import Step4 from './Step4';
 import AuthService from '../../services/AuthService';
+import { Exercise } from '../../types/Exercise';
 
 interface ActivationFlowProps {
   onClose: () => void;
   onComplete: () => void;
+  onOpenExercise?: (exercise: Exercise) => void;
 }
 
 interface ActivationData {
@@ -17,9 +19,10 @@ interface ActivationData {
   symptoms: string[];
   intensity: string;
   description: string;
+  type: 'ossessione' | 'compulsione' | null;
 }
 
-export default function ActivationFlow({ onClose, onComplete }: ActivationFlowProps) {
+export default function ActivationFlow({ onClose, onComplete, onOpenExercise }: ActivationFlowProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [activationData, setActivationData] = useState<Partial<ActivationData>>({});
 
@@ -33,8 +36,8 @@ export default function ActivationFlow({ onClose, onComplete }: ActivationFlowPr
     setCurrentStep(3);
   };
 
-  const handleStep3Next = (description: string) => {
-    setActivationData(prev => ({ ...prev, description }));
+  const handleStep3Next = ({ description, type }: { description: string; type: 'ossessione' | 'compulsione' | null }) => {
+    setActivationData(prev => ({ ...prev, description, type }));
     setCurrentStep(4);
   };
 
@@ -68,7 +71,7 @@ export default function ActivationFlow({ onClose, onComplete }: ActivationFlowPr
           id: Date.now().toString(),
           date: convertDateToISO(activationData.date),
           time: activationData.time,
-          type: 'compulsione', // Puoi modificare questo in base al tipo di attività
+          type: activationData.type || 'compulsione',
           symptom: activationData.symptoms[0] || 'unknown',
           intensity: activationData.intensity,
           description: activationData.description,
@@ -89,14 +92,15 @@ export default function ActivationFlow({ onClose, onComplete }: ActivationFlowPr
       case 1:
         return <Step1 onNext={handleStep1Next} onClose={onClose} />;
       case 2:
-        return <Step2 onNext={handleStep2Next} onBack={handleStep2Back} />;
+        return <Step2 onNext={handleStep2Next} onBack={handleStep2Back} onClose={onClose} />;
       case 3:
-        return <Step3 onNext={handleStep3Next} onBack={handleStep3Back} />;
+        return <Step3 onNext={handleStep3Next} onBack={handleStep3Back} onClose={onClose} />;
       case 4:
         return (
           <Step4 
             onFinish={handleFinish} 
             activationData={activationData as ActivationData}
+            onOpenExercise={onOpenExercise}
           />
         );
       default:

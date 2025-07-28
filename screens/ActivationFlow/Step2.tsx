@@ -6,6 +6,7 @@ import ButtonNav from '../../components/ButtonNav';
 interface Step2Props {
   onNext: (intensity: string) => void;
   onBack: () => void;
+  onClose: () => void;
 }
 
 
@@ -30,7 +31,7 @@ const intensityData: { level: IntensityLevel; label: string }[] = [
   { level: 'alta', label: 'Alta' },
 ];
 
-export default function Step2({ onNext, onBack }: Step2Props) {
+export default function Step2({ onNext, onBack, onClose }: Step2Props) {
   const [selectedIntensity, setSelectedIntensity] = useState<IntensityLevel>('media');
 
   const handleContinue = () => {
@@ -41,7 +42,10 @@ export default function Step2({ onNext, onBack }: Step2Props) {
     <View style={[styles.container, { backgroundColor: intensityColors[selectedIntensity] }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="black" />
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -92,13 +96,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 10,
+    backgroundColor: 'white',
   },
   backButton: {
     padding: 8,
-    alignSelf: 'flex-start',
+  },
+  closeButton: {
+    padding: 8,
   },
   content: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Modal } from 'react-native';
+import { StyleSheet, Text, View, Modal, Platform } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import TopNav from './components/TopNav';
@@ -17,6 +17,7 @@ import OnboardingFlow, { OnboardingData } from './screens/OnboardingFlow/Onboard
 import AuthService, { User, UserActivity } from './services/AuthService';
 import MoodFlow from './components/MoodFlow';
 import { Exercise } from './types/Exercise';
+import { initializeExerciseService } from './config/exerciseConfig';
 
 interface ActivationEntry {
   id: string;
@@ -249,6 +250,9 @@ export default function App() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        // Inizializza il servizio esercizi
+        initializeExerciseService();
+        
         const user = await AuthService.getCurrentUser();
         setCurrentUser(user);
         if (user) {
@@ -304,16 +308,18 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="dark" />
       
-      {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
-        <TopNav 
-          currentScreen={currentScreen}
-          onToggle={handleToggleScreen}
-          onAvatarPress={handleAvatarPress}
-          userName={currentUser?.name}
-        />
-      )}
+      <View style={styles.topNavContainer}>
+        {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
+          <TopNav 
+            currentScreen={currentScreen}
+            onToggle={handleToggleScreen}
+            onAvatarPress={handleAvatarPress}
+            userName={currentUser?.name}
+          />
+        )}
+      </View>
       
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? 115 : 0 }]}>
         {currentScreen === 'home' && activeTab === 'home' && (
           <HomePage 
                 userName={currentUser?.name}
@@ -382,15 +388,15 @@ export default function App() {
         )}
       </View>
       
-      {(currentScreen === 'home' || currentScreen === 'diary') && (
-        <SafeAreaView style={styles.bottomNavContainer} edges={['bottom']}>
+      {(currentScreen === 'home' || currentScreen === 'diary' || activeTab === 'explore') && (
+        <View style={styles.bottomNavContainer}>
           <BottomNav 
             activeTab={activeTab}
             onHomePress={handleHomePress}
             onExplorePress={handleExplorePress}
             onAddPress={handleAddPress}
           />
-        </SafeAreaView>
+        </View>
       )}
       
       <Modal
@@ -416,6 +422,11 @@ export default function App() {
         <ActivationFlow 
           onClose={handleCloseActivationFlow}
           onComplete={handleCompleteActivationFlow}
+          onOpenExercise={(exercise) => {
+            setShowActivationFlow(false);
+            setSelectedExercise(exercise);
+            setShowExerciseDetail(true);
+          }}
         />
       </Modal>
 
@@ -464,6 +475,7 @@ export default function App() {
            <ExerciseDetailScreen
              exercise={selectedExercise}
              onBack={handleCloseExerciseDetail}
+             onClose={handleCloseExerciseDetail}
              onComplete={handleExerciseComplete}
              onNavigateToDiary={handleNavigateToDiary}
            />
@@ -478,19 +490,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    position: 'relative',
   },
   contentContainer: {
     flex: 1,
+    paddingTop: 115,
     paddingBottom: 80, // Spazio per il BottomNav fisso
+    zIndex: 0,
+  },
+  topNavContainer: {
+    position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    elevation: 10,
   },
   bottomNavContainer: {
-    position: 'absolute',
+    position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+    zIndex: 1000,
+    elevation: 10,
   },
   loadingContainer: {
     justifyContent: 'center',

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Dimensions, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
 interface Step1Props {
   onNext: (data: { date: string; time: string; symptoms: string[] }) => void;
   onClose: () => void;
+  onBack?: () => void;
 }
 
 const symptoms = [
@@ -22,8 +23,9 @@ const symptoms = [
   { id: 'rituals', label: 'Idee o azioni di rituali', icon: 'repeat' },
 ];
 
-export default function Step1({ onNext, onClose }: Step1Props) {
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+export default function Step1({ onNext, onClose, onBack }: Step1Props) {
+  const [selectedSymptom, setSelectedSymptom] = useState<string>('');
+  const [customSymptoms, setCustomSymptoms] = useState<Array<{id: string, label: string, icon: string}>>([]);
   
   // Get current date and time
   const now = new Date();
@@ -42,24 +44,47 @@ export default function Step1({ onNext, onClose }: Step1Props) {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedHour, setSelectedHour] = useState(currentHour);
   const [selectedMinute, setSelectedMinute] = useState(currentMinute);
+  
+  // Add symptom modal state
+  const [showAddSymptomModal, setShowAddSymptomModal] = useState(false);
+  const [newSymptomText, setNewSymptomText] = useState('');
 
-  const toggleSymptom = (symptomId: string) => {
-    setSelectedSymptoms(prev => 
-      prev.includes(symptomId) 
-        ? prev.filter(id => id !== symptomId)
-        : [...prev, symptomId]
-    );
+  const toggleSymptom = (id: string) => {
+    setSelectedSymptom(selectedSymptom === id ? '' : id);
+  };
+
+  const handleAddCustomSymptom = () => {
+    if (newSymptomText.trim()) {
+      const newSymptom = {
+        id: `custom-${Date.now()}`,
+        label: newSymptomText.trim(),
+        icon: 'add-circle'
+      };
+      setCustomSymptoms([...customSymptoms, newSymptom]);
+      setNewSymptomText('');
+      setShowAddSymptomModal(false);
+    }
   };
 
   const handleContinue = () => {
-    if (selectedSymptoms.length > 0) {
-      onNext({ date, time, symptoms: selectedSymptoms });
+    if (selectedSymptom) {
+      onNext({ date, time, symptoms: [selectedSymptom] });
     }
   };
+
+  // Combina sintomi predefiniti e personalizzati
+  const allSymptoms = [...symptoms, ...customSymptoms];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <View style={styles.leftSection}>
+          {onBack && (
+            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+          )}
+        </View>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#333" />
         </TouchableOpacity>
@@ -80,12 +105,12 @@ export default function Step1({ onNext, onClose }: Step1Props) {
         <Text style={styles.subtitle}>Quale sintomo si è proposto?</Text>
 
         <View style={styles.symptomsGrid}>
-          {symptoms.map((symptom) => (
+          {allSymptoms.map((symptom) => (
             <TouchableOpacity
               key={symptom.id}
               style={[
                 styles.symptomCard,
-                selectedSymptoms.includes(symptom.id) && styles.symptomCardSelected
+                selectedSymptom === symptom.id && styles.symptomCardSelected
               ]}
               onPress={() => toggleSymptom(symptom.id)}
             >
@@ -99,13 +124,28 @@ export default function Step1({ onNext, onClose }: Step1Props) {
               <Text style={styles.symptomText}>{symptom.label}</Text>
             </TouchableOpacity>
           ))}
+          
+          {/* Pulsante Aggiungi */}
+          <TouchableOpacity
+            style={styles.addSymptomCard}
+            onPress={() => setShowAddSymptomModal(true)}
+          >
+            <View style={styles.symptomIcon}>
+              <Ionicons 
+                name="add" 
+                size={24} 
+                color="#8B7CF6" 
+              />
+            </View>
+            <Text style={styles.symptomText}>Aggiungi</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
       <ButtonNav 
         label="CONTINUA" 
         onPress={handleContinue}
-        disabled={selectedSymptoms.length === 0}
+        disabled={!selectedSymptom}
       />
 
       {/* Date Picker Modal */}
@@ -214,6 +254,50 @@ export default function Step1({ onNext, onClose }: Step1Props) {
           </View>
         </View>
       </Modal>
+
+      {/* Add Symptom Modal */}
+      <Modal
+        visible={showAddSymptomModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAddSymptomModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.addSymptomModalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => {
+                setShowAddSymptomModal(false);
+                setNewSymptomText('');
+              }}>
+                <Text style={styles.modalCancel}>Annulla</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Aggiungi Sintomo</Text>
+              <TouchableOpacity onPress={handleAddCustomSymptom}>
+                <Text style={[styles.modalDone, { opacity: newSymptomText.trim() ? 1 : 0.5 }]}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.addSymptomContent}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Nuovo sintomo</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newSymptomText}
+                  onChangeText={setNewSymptomText}
+                  placeholder="Inserisci il nome del sintomo..."
+                  maxLength={50}
+                  autoFocus={true}
+                />
+              </View>
+              <View style={styles.iconPreview}>
+                <View style={styles.previewIcon}>
+                  <Ionicons name="add-circle" size={24} color="#8B7CF6" />
+                </View>
+                <Text style={styles.iconLabel}>Icona predefinita</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -224,10 +308,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 10,
-    alignItems: 'flex-end',
+    backgroundColor: 'white',
+  },
+  leftSection: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  backButton: {
+    padding: 8,
   },
   closeButton: {
     padding: 8,
@@ -295,6 +389,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0EFFF',
     borderColor: '#8B7CF6',
   },
+  addSymptomCard: {
+    width: '47%',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    minHeight: 120,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderStyle: 'dashed',
+  },
   symptomIcon: {
     marginBottom: 8,
   },
@@ -358,5 +464,52 @@ const styles = StyleSheet.create({
   pickerTextSelected: {
     color: '#007AFF',
     fontWeight: '600',
+  },
+  addSymptomModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  addSymptomContent: {
+    padding: 20,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  iconPreview: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+  },
+  previewIcon: {
+    marginBottom: 8,
+  },
+  iconLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

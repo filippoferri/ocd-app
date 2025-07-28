@@ -10,7 +10,7 @@ interface SupabaseExerciseData {
   objective_text: string;
   duration: number;
   image: string;
-  audio_guide?: string;
+  
   steps: any;
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -31,8 +31,7 @@ class SupabaseExerciseService {
       const { data, error } = await this.supabase
         .from('exercises')
         .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching exercises:', error);
@@ -55,7 +54,6 @@ class SupabaseExerciseService {
         .from('exercises')
         .select('*')
         .eq('id', id)
-        .eq('is_active', true)
         .single();
 
       if (error) {
@@ -82,7 +80,6 @@ class SupabaseExerciseService {
         .from('exercises')
         .select('*')
         .eq('category', category)
-        .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
       if (error) {
@@ -105,8 +102,7 @@ class SupabaseExerciseService {
       const { data, error } = await this.supabase
         .from('exercises')
         .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
         .limit(3);
 
       if (error) {
@@ -187,12 +183,10 @@ class SupabaseExerciseService {
           objective_text: exercise.objectiveText,
           duration: exercise.duration,
           image: exercise.image,
-          audio_guide: exercise.audioGuide,
+          
           steps: exercise.steps,
           category: exercise.category || 'generale',
-          difficulty: exercise.difficulty || 'easy',
-          is_active: true,
-          sort_order: 0
+          difficulty: exercise.difficulty || 'easy'
         })
         .select()
         .single();
@@ -222,7 +216,7 @@ class SupabaseExerciseService {
       if (updates.objectiveText) updateData.objective_text = updates.objectiveText;
       if (updates.duration) updateData.duration = updates.duration;
       if (updates.image) updateData.image = updates.image;
-      if (updates.audioGuide) updateData.audio_guide = updates.audioGuide;
+      
       if (updates.steps) updateData.steps = updates.steps;
       if (updates.category) updateData.category = updates.category;
       if (updates.difficulty) updateData.difficulty = updates.difficulty;
@@ -247,21 +241,21 @@ class SupabaseExerciseService {
   }
 
   /**
-   * Disattiva un esercizio (soft delete)
+   * Elimina un esercizio
    */
-  static async deactivateExercise(id: string): Promise<void> {
+  static async deleteExercise(id: string): Promise<void> {
     try {
       const { error } = await this.supabase
         .from('exercises')
-        .update({ is_active: false })
+        .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Error deactivating exercise:', error);
+        console.error('Error deleting exercise:', error);
         throw error;
       }
     } catch (error) {
-      console.error('Error in deactivateExercise:', error);
+      console.error('Error in deleteExercise:', error);
       throw error;
     }
   }
@@ -278,7 +272,7 @@ class SupabaseExerciseService {
       objectiveText: item.objective_text,
       duration: item.duration,
       image: item.image,
-      audioGuide: item.audio_guide || '',
+      
       steps: item.steps || [],
       category: item.category,
       difficulty: item.difficulty

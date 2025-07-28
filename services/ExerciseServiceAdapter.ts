@@ -98,7 +98,13 @@ class ExerciseServiceAdapter {
       default:
         try {
           const supabaseExercises = await SupabaseExerciseService.getDailyRecommendations();
-          return supabaseExercises.length > 0 ? supabaseExercises : ExerciseService.getDailyRecommendations();
+          // TEMPORANEO: Forza l'uso dei dati locali per le raccomandazioni giornaliere
+          // finché Supabase non contiene tutti gli esercizi necessari
+          if (supabaseExercises.length < 3) {
+            console.log(`Supabase ha solo ${supabaseExercises.length} raccomandazioni, usando dati locali`);
+            return ExerciseService.getDailyRecommendations();
+          }
+          return supabaseExercises;
         } catch (error) {
           return ExerciseService.getDailyRecommendations();
         }
@@ -236,6 +242,15 @@ class ExerciseServiceAdapter {
       // Prima prova Supabase
       const supabaseExercises = await SupabaseExerciseService.getAllExercises();
       
+      // TEMPORANEO: Se Supabase ha meno di 7 esercizi, usa sempre i dati locali
+      // Questo risolve il problema degli esercizi mancanti
+      if (supabaseExercises.length < 7) {
+        console.log(`Supabase ha solo ${supabaseExercises.length} esercizi, usando dati locali completi`);
+        const localExercises = this.getLocalExercises();
+        console.log(`Caricati ${localExercises.length} esercizi locali`);
+        return localExercises;
+      }
+      
       if (supabaseExercises.length > 0) {
         console.log(`Caricati ${supabaseExercises.length} esercizi da Supabase`);
         return supabaseExercises;
@@ -347,7 +362,6 @@ class ExerciseServiceAdapter {
             objectiveText: exercise.objectiveText,
             duration: exercise.duration,
             image: exercise.image,
-            audioGuide: exercise.audioGuide,
             steps: exercise.steps,
             category: exercise.category,
             difficulty: exercise.difficulty

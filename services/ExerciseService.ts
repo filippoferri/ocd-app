@@ -10,12 +10,11 @@ class ExerciseService {
       benefitsText: '• Riduce l\'ansia e lo stress\n• Migliora la consapevolezza corporea\n• Favorisce il rilassamento profondo\n• Aiuta a riconoscere le tensioni fisiche\n• Sviluppa la capacità di osservazione senza giudizio',
       objectiveText: 'Sviluppare consapevolezza corporea e ridurre l\'ansia',
       duration: 15,
-      image: 'body-scan',
-      audioGuide: './assets/audio/body-scan.mp3',
+      image: './assets/exercises/body-scan.png',
       steps: [
         {
           id: 'preparation',
-          type: 'list',
+          type: 'default',
           title: 'Preparazione',
           content: [
             'Trova una posizione comoda, seduto o sdraiato',
@@ -26,7 +25,7 @@ class ExerciseService {
         },
         {
           id: 'body-scan-practice',
-          type: 'list',
+          type: 'default',
           title: 'Pratica del Body Scan',
           content: [
             'Inizia dalla sommità della testa',
@@ -39,7 +38,7 @@ class ExerciseService {
         },
         {
           id: 'reflection',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Riflessione',
           placeholder: 'Descrivi cosa hai notato durante la pratica. Quali sensazioni hai percepito? Come ti senti ora?'
         }
@@ -49,23 +48,22 @@ class ExerciseService {
     },
     {
       id: 'contrasta-compulsione',
-      name: 'Contrasta la Compulsione',
+      name: 'Contrasta la compulsione',
       introText: 'Questo esercizio ti aiuta a riconoscere e resistere alle compulsioni attraverso tecniche di esposizione graduale. Imparerai a tollerare l\'ansia senza cedere ai comportamenti compulsivi, rafforzando la tua capacità di controllo.',
       benefitsText: '• Riduce la forza delle compulsioni\n• Aumenta la tolleranza all\'ansia\n• Migliora il senso di controllo\n• Sviluppa strategie di coping\n• Riduce la frequenza dei comportamenti compulsivi',
       objectiveText: 'Resistere alle compulsioni e tollerare l\'ansia',
       duration: 20,
-      image: 'contrasta-compulsione',
-      audioGuide: './assets/audio/contrasta-compulsione.mp3',
+      image: './assets/exercises/contrasta-compulsione.png',
       steps: [
         {
           id: 'identify-trigger',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Identifica il Trigger',
           placeholder: 'Descrivi la situazione o il pensiero che ha scatenato l\'impulso compulsivo...'
         },
         {
           id: 'resistance-techniques',
-          type: 'list',
+          type: 'default',
           title: 'Tecniche di Resistenza',
           content: [
             'Riconosci l\'impulso senza agire immediatamente',
@@ -78,7 +76,7 @@ class ExerciseService {
         },
         {
           id: 'outcome-reflection',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Risultato',
           placeholder: 'Come è andata? Sei riuscito a resistere? Cosa hai imparato da questa esperienza?'
         }
@@ -87,18 +85,55 @@ class ExerciseService {
       difficulty: 'medium'
     },
     {
+      id: 'contrasta-ossessione',
+      name: 'Contrasta l\'ossessione',
+      introText: 'Questo esercizio ti aiuta a riconoscere e resistere alle ossessioni attraverso tecniche di mindfulness e distanziamento cognitivo. Imparerai a osservare i pensieri ossessivi senza identificarti con essi, riducendo il loro impatto emotivo.',
+      benefitsText: '• Riduce l\'intensità delle ossessioni\n• Aumenta la capacità di distanziamento cognitivo\n• Migliora il senso di controllo sui pensieri\n• Sviluppa strategie di coping per i pensieri intrusivi\n• Riduce la frequenza delle ruminazioni mentali',
+      objectiveText: 'Riconoscere e resistere alle ossessioni',
+      duration: 20,
+      image: './assets/exercises/contrasta-ossessione.png',
+      steps: [
+        {
+          id: 'identify-obsession',
+          type: 'withtextarea',
+          title: 'Identifica l\'Ossessione',
+          placeholder: 'Descrivi il pensiero ossessivo che stai sperimentando...'
+        },
+        {
+          id: 'resistance-techniques',
+          type: 'default',
+          title: 'Tecniche di Resistenza',
+          content: [
+            'Osserva il pensiero come un osservatore esterno',
+            'Etichetta il pensiero come "ossessione" senza giudicarlo',
+            'Pratica la mindfulness: focalizzati sul respiro',
+            'Usa il distanziamento: "Sto avendo il pensiero che..."',
+            'Rimanda l\'attenzione al pensiero a un momento successivo',
+            'Ricorda che i pensieri non sono fatti'
+          ]
+        },
+        {
+          id: 'outcome-reflection',
+          type: 'withtextarea',
+          title: 'Risultato',
+          placeholder: 'Come è andata? Sei riuscito a distanziarti dal pensiero? Cosa hai imparato?'
+        }
+      ],
+      category: 'mindfulness',
+      difficulty: 'medium'
+    },
+    {
       id: 'gratitudine-mattino',
-      name: 'Gratitudine del Mattino',
+      name: 'Gratitudine del mattino',
       introText: 'Inizia la giornata con un atteggiamento positivo attraverso la pratica della gratitudine. Questo esercizio ti aiuta a focalizzarti sugli aspetti positivi della vita, migliorando l\'umore e riducendo i pensieri negativi.',
       benefitsText: '• Migliora l\'umore e l\'ottimismo\n• Riduce i pensieri negativi\n• Aumenta la soddisfazione di vita\n• Sviluppa una prospettiva positiva\n• Rafforza la resilienza emotiva',
       objectiveText: 'Coltivare gratitudine e positività',
       duration: 10,
-      image: 'gratitudine-mattino',
-      audioGuide: './assets/audio/gratitudine-mattino.mp3',
+      image: './assets/exercises/gratitudine-mattino.png',
       steps: [
         {
           id: 'morning-setup',
-          type: 'list',
+          type: 'default',
           title: 'Preparazione Mattutina',
           content: [
             'Trova un momento tranquillo al risveglio',
@@ -109,13 +144,13 @@ class ExerciseService {
         },
         {
           id: 'gratitude-practice',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Pratica della Gratitudine',
           placeholder: 'Scrivi 3 cose per cui sei grato oggi. Possono essere piccole o grandi, semplici o complesse...'
         },
         {
           id: 'intention-setting',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Intenzione per la Giornata',
           placeholder: 'Qual è la tua intenzione positiva per oggi? Come vuoi affrontare la giornata?'
         }
@@ -124,18 +159,53 @@ class ExerciseService {
       difficulty: 'easy'
     },
     {
+      id: 'gratitudine-sera',
+      name: 'Gratitudine della sera',
+      introText: 'Concludi la giornata con un atteggiamento positivo attraverso la pratica della gratitudine. Questo esercizio ti aiuta a riflettere sugli aspetti positivi della giornata, migliorando l\'umore e favorendo un sonno tranquillo.',
+      benefitsText: '• Migliora l\'umore serale\n• Riduce i pensieri negativi prima di dormire\n• Aumenta la soddisfazione per la giornata\n• Sviluppa una prospettiva positiva\n• Favorisce un sonno più riposante',
+      objectiveText: 'Riflettere sulla gratitudine e positività serale',
+      duration: 10,
+      image: './assets/exercises/gratitudine-sera.png',
+      steps: [
+        {
+          id: 'evening-setup',
+          type: 'default',
+          title: 'Preparazione Serale',
+          content: [
+            'Trova un momento tranquillo prima di dormire',
+            'Siediti comodamente o sdraiati',
+            'Fai alcuni respiri profondi',
+            'Porta l\'attenzione alla giornata trascorsa'
+          ]
+        },
+        {
+          id: 'gratitude-practice',
+          type: 'withtextarea',
+          title: 'Pratica della Gratitudine',
+          placeholder: 'Scrivi 3 cose per cui sei grato della giornata. Possono essere piccole o grandi, semplici o complesse...'
+        },
+        {
+          id: 'reflection-setting',
+          type: 'withtextarea',
+          title: 'Riflessione sulla Giornata',
+          placeholder: 'Qual è stata la cosa più positiva di oggi? Come ti senti riguardo alla giornata?'
+        }
+      ],
+      category: 'positivity',
+      difficulty: 'easy'
+    },
+    {
       id: 'scrittura',
-      name: 'Scrittura Terapeutica',
+      name: 'Scrittura terapeutica',
       introText: 'La scrittura terapeutica è uno strumento potente per elaborare pensieri ed emozioni. Attraverso la scrittura libera, potrai esplorare i tuoi sentimenti, chiarire i pensieri e trovare nuove prospettive sui problemi.',
       benefitsText: '• Chiarisce pensieri ed emozioni\n• Riduce lo stress e l\'ansia\n• Migliora l\'autoconsapevolezza\n• Facilita l\'elaborazione emotiva\n• Sviluppa nuove prospettive',
       objectiveText: 'Elaborare pensieri ed emozioni attraverso la scrittura',
       duration: 25,
-      image: 'scrittura',
-      audioGuide: './assets/audio/scrittura.mp3',
+      image: './assets/exercises/scrittura.png',
       steps: [
         {
           id: 'writing-setup',
-          type: 'list',
+          type: 'default',
           title: 'Preparazione alla Scrittura',
           content: [
             'Trova un luogo tranquillo e privato',
@@ -146,19 +216,98 @@ class ExerciseService {
         },
         {
           id: 'free-writing',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Scrittura Libera',
           placeholder: 'Scrivi liberamente sui tuoi pensieri e sentimenti attuali. Non preoccuparti della grammatica o della struttura, lascia fluire le parole...'
         },
         {
           id: 'reflection-insights',
-          type: 'textarea',
+          type: 'withtextarea',
           title: 'Riflessioni e Intuizioni',
           placeholder: 'Rileggi quello che hai scritto. Quali intuizioni o pattern noti? Cosa hai imparato su te stesso?'
         }
       ],
       category: 'reflection',
       difficulty: 'medium'
+    },
+    {
+      id: 'respirazione-consapevole',
+      name: 'Respirazione consapevole',
+      introText: 'La respirazione consapevole è una tecnica fondamentale di mindfulness che ti aiuta a calmare la mente e ridurre l\'ansia. Attraverso l\'attenzione al respiro, svilupperai maggiore consapevolezza del momento presente e imparerai a gestire lo stress in modo naturale.',
+      benefitsText: '• Riduce ansia e stress immediatamente\n• Migliora la concentrazione e la chiarezza mentale\n• Attiva il sistema nervoso parasimpatico\n• Favorisce il rilassamento profondo\n• Sviluppa la consapevolezza del momento presente\n• Migliora la qualità del sonno',
+      objectiveText: 'Calmare la mente e ridurre l\'ansia attraverso il respiro',
+      duration: 12,
+      image: './assets/exercises/respirazione-consapevole.png',
+      steps: [
+        {
+          id: 'text-guide',
+          type: 'default',
+          title: 'Azioni preparatorie',
+          content: [
+            'Trova un luogo tranquillo dove non sarai disturbato per i prossimi minuti',
+            'Siediti in una posizione comoda, con la schiena eretta ma non rigida',
+            'Rilassa le spalle, allenta la tensione nella mascella e nel viso',
+            'Ricorda che questa pratica è disponibile in qualsiasi momento della giornata'
+          ]
+        },
+        {
+          id: 'audio-practice',
+          type: 'withaudio',
+          title: 'Pratica con Audio',
+          content: [
+            'Clicca Play per iniziare il sottofondo musicale',
+            'Chiudi gli occhi e rilassati',
+            'Inspira accogliendo energia, espira rilasciando tensione',
+            'Prova un respiro più profondo: inspira contando fino a 4, espira fino a 6',
+            'Ritorna gradualmente a un ritmo di respirazione naturale',
+            'Mantieni l\'attenzione sulle sensazioni di ogni ciclo respiratorio',
+            'Se la mente vaga, riportala gentilmente al respiro',
+          ],
+          audioFile: './assets/audio/breathing-guide.mp3',
+          duration: 480
+        }
+      ],
+      category: 'mindfulness',
+      difficulty: 'easy'
+    },
+    {
+      id: 'meditazione-guidata',
+      name: 'Meditazione guidata',
+      introText: 'Una sessione di meditazione profonda per rilassare mente e corpo attraverso la visualizzazione di una luce dorata che si espande in tutto il corpo, favorendo calma e connessione interiore.',
+      benefitsText: '• Riduce stress e tensioni profonde\n• Favorisce il rilassamento completo\n• Migliora la connessione mente-corpo\n• Sviluppa la gratitudine e la pace interiore\n• Aumenta la consapevolezza del momento presente',
+      objectiveText: 'Raggiungere uno stato di calma profonda e connessione con il proprio centro autentico',
+      duration: 12,
+      image: './assets/exercises/meditazione-guidata.png',
+      steps: [
+        {
+          id: 'introduzione',
+          type: 'default',
+          title: 'Introduzione alla meditazione',
+          content: [
+            'Trova una posizione comoda, seduto o sdraiato',
+            'Chiudi dolcemente gli occhi',
+            'Inizia a respirare lentamente e profondamente',
+            'Permetti al tuo corpo di rilassarsi completamente',
+            'Lascia andare ogni tensione e preoccupazione'
+          ]
+        },
+        {
+          id: 'meditazione-audio',
+          type: 'withaudio',
+          title: 'Meditazione con luce dorata',
+          content: [
+            'Segui la voce guida per la meditazione completa',
+            'Visualizza una luce dorata nel centro del petto',
+            'Lascia che la luce si espanda in tutto il corpo',
+            'Resta in connessione con la sensazione di pace',
+            'Concludi con gratitudine per questo momento'
+          ],
+          audioFile: './assets/audio/meditation-guided.mp3',
+          duration: 600
+        }
+      ],
+      category: 'mindfulness',
+      difficulty: 'easy'
     }
   ];
 
@@ -175,9 +324,12 @@ class ExerciseService {
   }
 
   static getDailyRecommendations(): Exercise[] {
-    // Restituisce i primi 3 esercizi come raccomandazioni giornaliere
-    // In futuro si può implementare una logica più sofisticata
-    return this.exercises.slice(0, 3);
+    // Return specific exercises as daily recommendations
+    return [
+      this.exercises.find(ex => ex.id === 'gratitudine-mattino')!,
+      this.exercises.find(ex => ex.id === 'scrittura')!,
+      this.exercises.find(ex => ex.id === 'gratitudine-sera')!
+    ];
   }
 
   static getDailyRecommendedExercises(): Exercise[] {

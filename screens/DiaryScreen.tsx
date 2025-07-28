@@ -54,6 +54,16 @@ const symptomIcons: { [key: string]: string } = {
   'rituals': 'repeat',
 };
 
+// Funzione per ottenere l'icona del sintomo
+const getSymptomIcon = (symptomId: string): string => {
+  // Se è un sintomo personalizzato (inizia con 'custom-'), usa l'icona predefinita
+  if (symptomId.startsWith('custom-')) {
+    return 'add-circle';
+  }
+  // Altrimenti usa la mappatura esistente
+  return symptomIcons[symptomId] || 'help-circle';
+};
+
 const intensityColors: { [key: string]: string } = {
   'bassa': '#EFEFEF',
   'media': '#fcefc6',
@@ -457,7 +467,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
                   ) : (
                     <View style={styles.iconContainer}>
                       <Ionicons 
-                        name={symptomIcons[activation.symptom] as any || 'document-text'} 
+                        name={getSymptomIcon(activation.symptom) as any} 
                         size={18} 
                         color="#8B7CF6" 
                       />

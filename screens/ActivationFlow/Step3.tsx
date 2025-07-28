@@ -4,17 +4,18 @@ import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
 interface Step3Props {
-  onNext: (description: string) => void;
+  onNext: (data: { description: string; type: 'ossessione' | 'compulsione' | null }) => void;
   onBack: () => void;
+  onClose: () => void;
 }
 
-export default function Step3({ onNext, onBack }: Step3Props) {
+export default function Step3({ onNext, onBack, onClose }: Step3Props) {
   const [description, setDescription] = useState('');
   const [selectedType, setSelectedType] = useState<'ossessione' | 'compulsione' | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   const handleContinue = () => {
-    onNext(description);
+    onNext({ description, type: selectedType });
   };
 
   return (
@@ -25,6 +26,9 @@ export default function Step3({ onNext, onBack }: Step3Props) {
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -113,13 +117,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 10,
+    backgroundColor: 'white',
   },
   backButton: {
     padding: 8,
-    alignSelf: 'flex-start',
+  },
+  closeButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
