@@ -1,22 +1,30 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Svg, Path, G, ClipPath, Defs, Rect } from 'react-native-svg';
+import { Svg, Path, G, ClipPath, Defs, Rect, Circle } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
 import { UserActivity } from '../types/Activity';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 import ExerciseService from '../services/ExerciseService';
 
-const CircleBackground = () => (
-  <Svg width={120} height={120} viewBox="0 0 247 241" fill="none">
-    <Defs>
-      <ClipPath id="clip0_157_11949">
-        <Rect width="247" height="241" fill="white"/>
-      </ClipPath>
-    </Defs>
-    <G clipPath="url(#clip0_157_11949)">
-      <Path d="M61.5553 16.9655C0.771564 53.7427 -22.3446 144.259 26.102 200.707C63.0845 243.962 124.115 252.047 176.209 226.596C275.889 177.896 272.183 25.9196 152.86 2.47987C121.38 -3.7051 85.8139 1.88324 61.5553 16.9655Z" fill="#B8B8FF"/>
-      <Path d="M50.7825 55.7889C2.03544 108.508 20.081 200.549 97.55 214.45C158.266 225.345 214.117 182.561 222.073 129.559C224.24 96.9257 212.999 62.8075 185.088 41.7564C164.835 26.4883 138.883 20.8274 116.975 22.9955C90.814 25.5817 68.3731 36.1119 50.7825 55.7889Z" fill="#9381FF"/>
-    </G>
+const ConcentricCirclesBackground = () => (
+  <Svg width={180} height={180} viewBox="0 0 180 180" fill="none">
+    <Circle cx="90" cy="90" r="90" fill="#A495F6" />
+    <Circle cx="90" cy="90" r="75" fill="#B3A6F8" />
+    <Circle cx="90" cy="90" r="60" fill="#C2B7FA" />
+    {/* Small decorative dashes */}
+    <Path d="M90 10 A80 80 0 0 1 120 16" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <Path d="M22 135 A80 80 0 0 1 13 105" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <Path d="M165 65 A80 80 0 0 1 155 125" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <Path d="M125 160 A80 80 0 0 1 85 168" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+  </Svg>
+);
+
+const FacePurpleSmile = () => (
+  <Svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+    <Circle cx="28" cy="28" r="28" fill="#ACA0FF" />
+    <Path d="M17 25 C19 22 23 22 25 25" stroke="#8471F2" strokeWidth="3" strokeLinecap="round" fill="none" />
+    <Path d="M31 25 C33 22 37 22 39 25" stroke="#8471F2" strokeWidth="3" strokeLinecap="round" fill="none" />
+    <Path d="M19 33 C23 39 33 39 37 33" stroke="#8471F2" strokeWidth="3" strokeLinecap="round" fill="none" />
   </Svg>
 );
 
@@ -143,11 +151,14 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
         <Text style={styles.welcomeText}>Buongiorno,{"\n"}{userName || 'Utente'}</Text>
         <TouchableOpacity style={styles.progressContainer} onPress={onMoodPress}>
           <View style={styles.moodContainer}>
-            <CircleBackground />
+            <View style={styles.circleBackgroundWrapper}>
+              <ConcentricCirclesBackground />
+            </View>
             <View style={styles.moodIconBackground}>
+              {/* Uses FacePurpleSmile based on the screenshot, or custom state faces */}
               {currentMood === 'sad' ? <FaceSad /> : 
                currentMood === 'neutral' ? <FaceNeutral /> : 
-               currentMood === 'happy' ? <FaceHappy /> : <FaceHappy />}
+               <FacePurpleSmile />}
             </View>
           </View>
         </TouchableOpacity>
@@ -235,19 +246,24 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   welcomeSection: {
-    backgroundColor: '#8B7CF6',
-    borderRadius: 20,
-    padding: 25,
+    backgroundColor: '#9381FF',
+    borderRadius: 24,
+    paddingVertical: 35,
+    paddingLeft: 25,
+    paddingRight: 0, // Circles can touch the right edge
     marginBottom: 25,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '400',
     color: 'white',
-    lineHeight: 30,
+    lineHeight: 32,
+    letterSpacing: 0.3,
+    flex: 1, // takes up space so it doesn't overlap circles
   },
   progressContainer: {
     position: 'relative',
@@ -256,21 +272,28 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 120,
-    height: 120,
+    width: 150,
+    height: 150,
   },
-  circleBackground: {
+  circleBackgroundWrapper: {
     position: 'absolute',
+    right: -20, // push it slightly off-screen like in screenshot
   },
   moodIconBackground: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 27, // Positioned nicely over the inner white center of the SVG rings
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   moodIcon: {
     zIndex: 2,

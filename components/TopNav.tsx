@@ -44,43 +44,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#E8E8E8',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   toggle: {
     flexDirection: 'row',
-    backgroundColor: '#E8E8F0',
-    borderRadius: 20,
-    padding: 3,
+    backgroundColor: '#E6E2FF',
+    borderRadius: 30,
+    padding: 0,
+    height: 44,
   },
   toggleOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    paddingHorizontal: 24,
     justifyContent: 'center',
-    borderRadius: 17,
+    alignItems: 'center',
+    borderRadius: 30,
   },
   toggleOptionFirst: {
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
+    // No specific corner resets needed as we want it to be a pill
   },
   toggleOptionLast: {
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+    // No specific corner resets needed
   },
   toggleOptionActive: {
     backgroundColor: '#8B7CF6',
   },
   toggleText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B7CF6',
   },
   toggleTextActive: {
-    color: 'white',
+    color: '#FFFFFF',
   },
 });
