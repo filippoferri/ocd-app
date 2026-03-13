@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface BottomNavProps {
   activeTab: 'home' | 'explore';
@@ -10,6 +11,35 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ activeTab, onHomePress, onExplorePress, onAddPress }: BottomNavProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    checkTooltipStatus();
+  }, []);
+
+  const checkTooltipStatus = async () => {
+    try {
+      const hasSeen = await AsyncStorage.getItem('has_seen_activation_tooltip');
+      if (!hasSeen) {
+        setShowTooltip(true);
+      }
+    } catch (error) {
+      console.error('Error checking tooltip status:', error);
+    }
+  };
+
+  const handleAddPress = async () => {
+    if (showTooltip) {
+      setShowTooltip(false);
+      try {
+        await AsyncStorage.setItem('has_seen_activation_tooltip', 'true');
+      } catch (error) {
+        console.error('Error saving tooltip status:', error);
+      }
+    }
+    onAddPress();
+  };
+
   return (
     <View style={styles.bottomNav}>
       <TouchableOpacity style={styles.navItem} onPress={onHomePress}>
@@ -21,9 +51,19 @@ export default function BottomNav({ activeTab, onHomePress, onExplorePress, onAd
         <Text style={[styles.navLabel, activeTab === 'home' && styles.navLabelActive]}>Home</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity style={styles.addButton} onPress={onAddPress}>
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      <View style={styles.addButtonContainer}>
+        {showTooltip && (
+          <View style={styles.tooltipContainer}>
+            <View style={styles.tooltipBubble}>
+              <Text style={styles.tooltipText}>Traccia attivazione</Text>
+            </View>
+            <View style={styles.tooltipArrow} />
+          </View>
+        )}
+        <TouchableOpacity style={styles.addButton} onPress={handleAddPress}>
+          <Ionicons name="add" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
       
       <TouchableOpacity style={styles.navItem} onPress={onExplorePress}>
         <Ionicons 
@@ -47,6 +87,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
+    zIndex: 1000, // Ensure tooltip is above content
   },
   navItem: {
     alignItems: 'center',
@@ -60,6 +101,12 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: '#8B7CF6',
   },
+  addButtonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    zIndex: 1001, // Ensure tooltip stays on top
+  },
   addButton: {
     width: 56,
     height: 56,
@@ -67,6 +114,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B7CF6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tooltipContainer: {
+    position: 'absolute',
+    bottom: 70, // Position above the button
+    alignItems: 'center',
+    width: 200, // Wide enough for text
+  },
+  tooltipBubble: {
+    backgroundColor: '#8B7CF6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  tooltipText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tooltipArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#8B7CF6',
+    marginTop: -1,
   },
 });

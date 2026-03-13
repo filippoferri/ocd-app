@@ -22,11 +22,19 @@ interface SupabaseExerciseData {
 
 class SupabaseExerciseService {
   private static supabase = supabase;
+  private static isConfigured(): boolean {
+    const url = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+    const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY;
+    return !!url && !!key;
+  }
 
   /**
    * Recupera tutti gli esercizi attivi da Supabase
    */
   static async getAllExercises(): Promise<Exercise[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercises')
@@ -35,13 +43,13 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error fetching exercises:', error);
-        throw error;
+        return [];
       }
 
       return this.mapSupabaseToExercise(data || []);
     } catch (error) {
       console.error('Error in getAllExercises:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -49,6 +57,9 @@ class SupabaseExerciseService {
    * Recupera un esercizio specifico per ID
    */
   static async getExerciseById(id: string): Promise<Exercise | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercises')
@@ -58,16 +69,16 @@ class SupabaseExerciseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          return null; // Nessun risultato trovato
+          return null;
         }
         console.error('Error fetching exercise by ID:', error);
-        throw error;
+        return null;
       }
 
       return this.mapSupabaseToExercise([data])[0];
     } catch (error) {
       console.error('Error in getExerciseById:', error);
-      throw error;
+      return null;
     }
   }
 
@@ -75,6 +86,9 @@ class SupabaseExerciseService {
    * Recupera esercizi per categoria
    */
   static async getExercisesByCategory(category: string): Promise<Exercise[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercises')
@@ -84,13 +98,13 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error fetching exercises by category:', error);
-        throw error;
+        return [];
       }
 
       return this.mapSupabaseToExercise(data || []);
     } catch (error) {
       console.error('Error in getExercisesByCategory:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -98,6 +112,9 @@ class SupabaseExerciseService {
    * Recupera raccomandazioni giornaliere (primi 3 esercizi)
    */
   static async getDailyRecommendations(): Promise<Exercise[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercises')
@@ -107,13 +124,13 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error fetching daily recommendations:', error);
-        throw error;
+        return [];
       }
 
       return this.mapSupabaseToExercise(data || []);
     } catch (error) {
       console.error('Error in getDailyRecommendations:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -121,6 +138,9 @@ class SupabaseExerciseService {
    * Salva il progresso di un esercizio
    */
   static async saveExerciseProgress(progress: ExerciseProgress): Promise<void> {
+    if (!this.isConfigured()) {
+      return;
+    }
     try {
       const { error } = await this.supabase
         .from('exercise_progress')
@@ -133,11 +153,10 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error saving exercise progress:', error);
-        throw error;
+        return;
       }
     } catch (error) {
       console.error('Error in saveExerciseProgress:', error);
-      throw error;
     }
   }
 
@@ -145,6 +164,9 @@ class SupabaseExerciseService {
    * Recupera il progresso degli esercizi per un utente
    */
   static async getUserExerciseProgress(userId: string): Promise<ExerciseProgress[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercise_progress')
@@ -154,7 +176,7 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error fetching user exercise progress:', error);
-        throw error;
+        return [];
       }
 
       return (data || []).map(item => ({
@@ -165,7 +187,7 @@ class SupabaseExerciseService {
       }));
     } catch (error) {
       console.error('Error in getUserExerciseProgress:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -173,6 +195,9 @@ class SupabaseExerciseService {
    * Crea un nuovo esercizio (solo per admin)
    */
   static async createExercise(exercise: Omit<Exercise, 'id'>): Promise<Exercise> {
+    if (!this.isConfigured()) {
+      throw new Error('Supabase non configurato');
+    }
     try {
       const { data, error } = await this.supabase
         .from('exercises')
@@ -207,6 +232,9 @@ class SupabaseExerciseService {
    * Aggiorna un esercizio esistente (solo per admin)
    */
   static async updateExercise(id: string, updates: Partial<Exercise>): Promise<Exercise> {
+    if (!this.isConfigured()) {
+      throw new Error('Supabase non configurato');
+    }
     try {
       const updateData: any = {};
       
@@ -244,6 +272,9 @@ class SupabaseExerciseService {
    * Elimina un esercizio
    */
   static async deleteExercise(id: string): Promise<void> {
+    if (!this.isConfigured()) {
+      return;
+    }
     try {
       const { error } = await this.supabase
         .from('exercises')
@@ -252,11 +283,10 @@ class SupabaseExerciseService {
 
       if (error) {
         console.error('Error deleting exercise:', error);
-        throw error;
+        return;
       }
     } catch (error) {
       console.error('Error in deleteExercise:', error);
-      throw error;
     }
   }
 

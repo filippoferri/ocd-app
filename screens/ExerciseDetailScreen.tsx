@@ -9,8 +9,11 @@ import {
   Alert,
   Dimensions,
   Image,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import Svg, { Circle, Path, G, ClipPath, Defs, Rect } from 'react-native-svg';
 import { Exercise, ExerciseStep, ExerciseProgress } from '../types/Exercise';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
@@ -109,23 +112,66 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<'sad' | 'neutral' | 'happy'>('happy');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [selectedMood, setSelectedMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
+  const audioRef = useRef<Audio.Sound | null>(null);
+  const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
+  const breathingScale = useRef(new Animated.Value(1)).current;
+  const breathingLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+  const startBreathingAnimation = () => {
+    // Sequenza:
+    // 1. Inspirazione (4s) -> Scale up
+    // 2. Pausa (1s)
+    // 3. Espirazione (6s) -> Scale down
+    // 4. Pausa (1s)
+    
+    breathingLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathingScale, {
+          toValue: 2.5, // Cerchio si ingrandisce
+          duration: 4000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.delay(1000), // Pausa inspirazione
+        Animated.timing(breathingScale, {
+          toValue: 1, // Cerchio si rimpicciolisce
+          duration: 6000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.delay(1000), // Pausa espirazione
+      ])
+    );
+    breathingLoop.current.start();
+  };
+
+  const stopBreathingAnimation = () => {
+    if (breathingLoop.current) {
+      breathingLoop.current.stop();
+      breathingLoop.current = null;
+    }
+    // Reset scale
+    breathingScale.setValue(1);
+  };
 
   const handleStartExercise = () => {
     setIsStarted(true);
     setCurrentStep(0);
   };
 
-  const handleNextStep = () => {
-    // Ferma l'audio quando si passa al prossimo step
+  const handleNextStep = async () => {
+    // Ferma l'audio e l'animazione quando si passa al prossimo step
     if (audioRef.current) {
-      audioRef.current.pause();
+      await audioRef.current.pauseAsync();
       setIsPlaying(false);
+      await audioRef.current.unloadAsync();
       audioRef.current = null;
       setAudioProgress(0);
       setAudioDuration(0);
     }
+    setShowBreathingAnimation(false);
+    stopBreathingAnimation();
     
     if (currentStep < exercise.steps.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -134,15 +180,18 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     }
   };
 
-  const handlePreviousStep = () => {
-    // Ferma l'audio quando si torna al step precedente
+  const handlePreviousStep = async () => {
+    // Ferma l'audio e l'animazione quando si torna al step precedente
     if (audioRef.current) {
-      audioRef.current.pause();
+      await audioRef.current.pauseAsync();
       setIsPlaying(false);
+      await audioRef.current.unloadAsync();
       audioRef.current = null;
       setAudioProgress(0);
       setAudioDuration(0);
     }
+    setShowBreathingAnimation(false);
+    stopBreathingAnimation();
     
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
@@ -157,6 +206,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   };
 
   const handleCompleteExercise = async () => {
+    // Ferma l'audio e l'animazione se attivi
+    if (audioRef.current) {
+      await audioRef.current.stopAsync();
+      setIsPlaying(false);
+    }
+    setShowBreathingAnimation(false);
+    stopBreathingAnimation();
+
     setIsCompleting(true);
     try {
       const progress: ExerciseProgress = {
@@ -170,6 +227,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       
       // Salva l'esercizio anche come attività nel diario
       const now = new Date();
+      const userText = Object.values(stepResponses)
+        .filter((t) => t && t.trim().length > 0)
+        .join('\n\n');
+
       const activity = {
         id: `exercise_${exercise.id}_${Date.now()}`,
         date: now.toISOString().split('T')[0],
@@ -177,7 +238,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         type: 'ossessione' as const, // Usiamo un tipo esistente
         symptom: exercise.category || 'Esercizio',
         intensity: 'completato',
-        description: `Esercizio completato: ${exercise.name}. Durata: ${exercise.duration} minuti.`,
+        description: userText
+          ? `Esercizio completato: ${exercise.name}.\n\n${userText}`
+          : `Esercizio completato: ${exercise.name}.`,
       };
       
       await authService.addActivity(activity);
@@ -235,21 +298,26 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     </View>
   );
 
-  const handleSkip = (seconds: number) => {
+  const handleSkip = async (seconds: number) => {
     if (audioRef.current) {
       try {
-        const newTime = Math.max(0, Math.min(
-          audioRef.current.currentTime + seconds,
-          audioRef.current.duration || 0
-        ));
-        audioRef.current.currentTime = newTime;
+        const status = await audioRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          const currentPosition = status.positionMillis || 0;
+          const duration = status.durationMillis || 0;
+          const newTime = Math.max(0, Math.min(
+            currentPosition + (seconds * 1000),
+            duration
+          ));
+          await audioRef.current.setPositionAsync(newTime);
+        }
       } catch (error) {
         console.error('Errore nel skip audio:', error);
       }
     }
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     try {
       if (!audioRef.current) {
         // Carica l'audio per lo step corrente
@@ -257,48 +325,56 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         if (currentStepData.audioFile) {
           // Determina quale audio caricare basato sul currentStep
           const audioMap = {
-  './assets/audio/breathing-guide.mp3': require('../assets/audio/breathing-guide.mp3'),
-  './assets/audio/meditation-step1-preparation.mp3': require('../assets/audio/meditation-step1-preparation.mp3'),
-  './assets/audio/meditation-step2-practice.mp3': require('../assets/audio/meditation-step2-practice.mp3'),
-  './assets/audio/meditation-guided.mp3': require('../assets/audio/meditation-guided.mp3'),
-};
-const audioPath = audioMap[currentStepData.audioFile as keyof typeof audioMap];
-if (!audioPath) {
-  console.error('Audio file not found in map:', currentStepData.audioFile);
-  return;
-}
+            './assets/audio/breathing-guide.mp3': require('../assets/audio/breathing-guide.mp3'),
+            './assets/audio/meditation-step1-preparation.mp3': require('../assets/audio/meditation-step1-preparation.mp3'),
+            './assets/audio/meditation-step2-practice.mp3': require('../assets/audio/meditation-step2-practice.mp3'),
+            './assets/audio/meditation-guided.mp3': require('../assets/audio/meditation-guided.mp3'),
+          };
+          const audioPath = audioMap[currentStepData.audioFile as keyof typeof audioMap];
+          if (!audioPath) {
+            console.error('Audio file not found in map:', currentStepData.audioFile);
+            return;
+          }
           
-          const audio = new Audio(audioPath);
-          audioRef.current = audio;
+          const { sound } = await Audio.Sound.createAsync(audioPath);
+          audioRef.current = sound;
           
           // Imposta i callback per il progresso
-          audio.addEventListener('loadedmetadata', () => {
-            setAudioDuration(audio.duration * 1000); // Converti in millisecondi
-          });
-          
-          audio.addEventListener('timeupdate', () => {
-            setAudioProgress(audio.currentTime * 1000); // Converti in millisecondi
-          });
-          
-          audio.addEventListener('ended', () => {
-            setIsPlaying(false);
-          });
-          
-          audio.addEventListener('error', (e) => {
-            console.error('Errore nel caricamento audio:', e);
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded) {
+              if (status.durationMillis) {
+                setAudioDuration(status.durationMillis);
+              }
+              if (status.positionMillis !== undefined) {
+                setAudioProgress(status.positionMillis);
+              }
+              if (status.didJustFinish) {
+                setIsPlaying(false);
+                setShowBreathingAnimation(false);
+                stopBreathingAnimation();
+              }
+            }
           });
         }
       }
       
       if (audioRef.current) {
         if (isPlaying) {
-          audioRef.current.pause();
+          await audioRef.current.pauseAsync();
           setIsPlaying(false);
+          // Ferma animazione se presente
+          if (exercise.id === 'respirazione-consapevole') {
+            setShowBreathingAnimation(false);
+            stopBreathingAnimation();
+          }
         } else {
-          audioRef.current.play().catch(error => {
-            console.error('Errore nella riproduzione:', error);
-          });
+          await audioRef.current.playAsync();
           setIsPlaying(true);
+          // Avvia animazione se è l'esercizio corretto
+          if (exercise.id === 'respirazione-consapevole' && exercise.steps[currentStep].audioFile) {
+            setShowBreathingAnimation(true);
+            startBreathingAnimation();
+          }
         }
       }
     } catch (error) {
@@ -310,7 +386,7 @@ if (!audioPath) {
     return () => {
       // Cleanup audio quando il componente viene smontato
       if (audioRef.current) {
-        audioRef.current.pause();
+        audioRef.current.unloadAsync();
         audioRef.current = null;
       }
     };
@@ -384,9 +460,11 @@ if (!audioPath) {
       
       {step.type === 'withtextarea' && (
         <View style={styles.stepContent}>
+          {step.placeholder && (
+            <Text style={styles.inputLabel}>{step.placeholder}</Text>
+          )}
           <TextInput
             style={styles.textArea}
-            placeholder={step.placeholder}
             value={stepResponses[step.id] || ''}
             onChangeText={(text) => handleStepResponse(step.id, text)}
             multiline
@@ -446,9 +524,37 @@ if (!audioPath) {
     </View>
   );
 
+  const renderBreathingAnimation = () => (
+    <View style={styles.fullScreenAnimation}>
+      <TouchableOpacity 
+        style={styles.closeAnimationButton} 
+        onPress={handlePlayPause}
+      >
+        <Ionicons name="close" size={32} color="white" />
+      </TouchableOpacity>
+      
+      <Animated.View 
+        style={[
+          styles.breathingCircle,
+          {
+            transform: [{ scale: breathingScale }]
+          }
+        ]}
+      />
+      
+      <View style={styles.breathingControls}>
+        <TouchableOpacity style={styles.largePlayButton} onPress={handlePlayPause}>
+          <Ionicons name="pause" size={48} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {showSuccessScreen ? (
+      {showBreathingAnimation ? (
+        renderBreathingAnimation()
+      ) : showSuccessScreen ? (
         renderSuccessScreen()
       ) : !isStarted ? (
         <>
@@ -486,13 +592,7 @@ if (!audioPath) {
           </View>
           <View style={styles.stepContentHeader}>
              {renderNavigationDots()}
-             {exercise.steps[currentStep].audioFile ? (
-  renderAudioPlayer()
-) : (
-  <View style={{ opacity: 0.5 }}>
-    {renderAudioPlayer()}
-  </View>
-)}
+             {exercise.steps[currentStep].audioFile ? renderAudioPlayer() : null}
            </View>
           
           <ScrollView 
@@ -671,14 +771,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#FF9500',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#FF7A00',
   },
   startButtonText: {
     color: '#FFFFFF',
@@ -742,6 +836,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E8E8',
     minHeight: 120,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   stepNavigation: {
     flexDirection: 'row',
@@ -958,10 +1058,48 @@ const styles = StyleSheet.create({
      alignItems: 'center',
    },
    diaryButtonText: {
-     color: '#FFFFFF',
-     fontSize: 16,
-     fontWeight: '600',
-   },
- });
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fullScreenAnimation: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#8B7CF6',
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeAnimationButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 1001,
+  },
+  breathingCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  breathingControls: {
+    position: 'absolute',
+    bottom: 60,
+    alignItems: 'center',
+  },
+  largePlayButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default ExerciseDetailScreen;

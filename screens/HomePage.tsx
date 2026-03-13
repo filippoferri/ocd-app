@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Svg, Path, G, ClipPath, Defs, Rect } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
+import { UserActivity } from '../types/Activity';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 import ExerciseService from '../services/ExerciseService';
 
@@ -57,6 +58,7 @@ interface HomePageProps {
   currentMood: 'sad' | 'neutral' | 'happy' | null;
   onMoodPress: () => void;
   onExercisePress: (exercise: Exercise) => void;
+  userActivities: UserActivity[];
 }
 
 const getExerciseImagePNG = (imagePath: string) => {
@@ -83,8 +85,20 @@ const getExerciseImagePNG = (imagePath: string) => {
   }
 };
 
-export default function HomePage({ userName, setCurrentScreen, testCompleted, currentMood, onMoodPress, onExercisePress }: HomePageProps) {
+export default function HomePage({ userName, setCurrentScreen, testCompleted, currentMood, onMoodPress, onExercisePress, userActivities }: HomePageProps) {
   const [dailyExercises, setDailyExercises] = React.useState<Exercise[]>([]);
+
+  // Filtra gli esercizi completati oggi
+  const displayedExercises = React.useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return dailyExercises.filter(exercise => {
+      const isCompleted = userActivities.some(activity => 
+        activity.date === today && 
+        activity.id.startsWith(`exercise_${exercise.id}_`)
+      );
+      return !isCompleted;
+    });
+  }, [dailyExercises, userActivities]);
 
   React.useEffect(() => {
     const loadExercises = async () => {
@@ -129,7 +143,14 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
       <View style={styles.exercisesSection}>
         <Text style={styles.sectionTitle}>Esercizi del giorno</Text>
         
-        {dailyExercises.map((exercise, index) => {
+        {displayedExercises.length === 0 && testCompleted ? (
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="checkmark-circle-outline" size={48} color="#6BCF7F" />
+            <Text style={styles.emptyStateText}>Tutti gli esercizi completati!</Text>
+            <Text style={styles.emptyStateSubtext}>Ottimo lavoro oggi.</Text>
+          </View>
+        ) : (
+          displayedExercises.map((exercise, index) => {
            return (
              <TouchableOpacity 
                key={exercise.id}
@@ -153,7 +174,8 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
                </View>
              </TouchableOpacity>
            );
-         })}
+         })
+        )}
 
         {!testCompleted && (
           <TouchableOpacity 
@@ -256,14 +278,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   exerciseImageContainer: {
     width: 60,
@@ -328,5 +344,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 4,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+    textAlign: 'center',
   },
 });

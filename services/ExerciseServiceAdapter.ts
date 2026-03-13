@@ -8,7 +8,7 @@ import { SupabaseExerciseService } from './SupabaseExerciseService';
 type DataSource = 'local' | 'supabase' | 'hybrid';
 
 class ExerciseServiceAdapter {
-  private static dataSource: DataSource = 'hybrid'; // Modalità predefinita
+  private static dataSource: DataSource = 'local'; // Modalità predefinita - solo dati locali
   private static fallbackToLocal = true; // Fallback automatico in caso di errore
 
   // Configura la fonte dati

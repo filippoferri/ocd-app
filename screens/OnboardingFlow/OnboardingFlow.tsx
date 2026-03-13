@@ -94,8 +94,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      {renderCurrentStep()}
+    <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+      <View style={{ flex: 1, maxWidth: 480, width: '100%', alignSelf: 'center' }}>
+        {renderCurrentStep()}
+      </View>
     </View>
   );
 }

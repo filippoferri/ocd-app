@@ -8,9 +8,9 @@ interface Step8Props {
   onBack: () => void;
 }
 
+
 export default function Step8({ onNext, onBack }: Step8Props) {
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
 
   const handleContinue = () => {
     if (selectedLevel !== null) {
@@ -27,57 +27,43 @@ export default function Step8({ onNext, onBack }: Step8Props) {
         <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Quanto valuteresti la tua fragilità da 1 a 10?</Text>
-        
-        <View style={styles.imageContainer}>
-          <Image 
-            source={require('../../assets/onboarding/onboarding-8.png')} 
-            style={styles.image}
-            resizeMode="contain"
-          />
-        </View>
-        
-        <View style={styles.scaleContainer}>
-          <View style={styles.scaleLabels}>
-            <Text style={styles.scaleLabel}>Minima</Text>
-            <Text style={styles.scaleLabel}>Massima</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Quanto valuteresti la tua fragilità da 1 a 5?</Text>
+          
+          <View style={styles.imageContainer}>
+            <Image 
+              source={require('../../assets/onboarding/onboarding-8.png')} 
+              style={styles.image}
+              resizeMode="contain"
+            />
           </View>
           
-          <TouchableOpacity 
-            style={styles.selectButton}
-            onPress={() => setShowDropdown(!showDropdown)}
-          >
-            <Text style={styles.selectText}>
-              {selectedLevel ? `Livello ${selectedLevel}` : 'Seleziona un livello...'}
-            </Text>
-            <Ionicons 
-              name={showDropdown ? 'chevron-up' : 'chevron-down'} 
-              size={20} 
-              color="#666" 
-            />
-          </TouchableOpacity>
-          
-          {showDropdown && (
-            <View style={styles.dropdown}>
-              <ScrollView style={styles.scrollContainer} nestedScrollEnabled={true}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((number) => (
-                  <TouchableOpacity
-                    key={number}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setSelectedLevel(number);
-                      setShowDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownText}>Livello {number}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+          <View style={styles.scaleContainer}>
+            <Text style={styles.helperText}>Scala 1–5: 1 è il minimo, 5 è il massimo.</Text>
+            
+            <View style={styles.ratingContainer}>
+              {[1, 2, 3, 4, 5].map((number) => (
+                <TouchableOpacity
+                  key={number}
+                  style={[
+                    styles.ratingButton,
+                    selectedLevel === number && styles.ratingButtonSelected
+                  ]}
+                  onPress={() => setSelectedLevel(number)}
+                >
+                  <Text style={[
+                    styles.ratingText,
+                    selectedLevel === number && styles.ratingTextSelected
+                  ]}>
+                    {number}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          </View>
         </View>
-      </View>
+      </ScrollView>
 
       <ButtonNav 
         label="CONTINUA" 
@@ -111,11 +97,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
+    paddingBottom: 20,
     alignItems: 'center',
+    paddingTop: 40,
   },
   title: {
     fontSize: 24,
@@ -124,11 +115,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 40,
     lineHeight: 30,
+    minHeight: 80,
+    textAlignVertical: 'center',
   },
   imageContainer: {
     width: 200,
     height: 200,
-    marginBottom: 60,
+    marginBottom: 40,
   },
   image: {
     width: '100%',
@@ -137,63 +130,39 @@ const styles = StyleSheet.create({
   scaleContainer: {
     width: '100%',
   },
-  scaleLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  scaleLabel: {
+  helperText: {
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+    marginBottom: 24,
+    paddingHorizontal: 10,
+    textAlign: 'center',
   },
-  selectButton: {
-    width: '100%',
-    height: 50,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
+  ratingContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  selectText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  dropdown: {
     width: '100%',
+    gap: 10,
+  },
+  ratingButton: {
+    flex: 1,
+    aspectRatio: 1,
     backgroundColor: 'white',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    marginTop: 8,
-    height: 250,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scrollContainer: {
-    flex: 1,
+  ratingButtonSelected: {
+    borderColor: '#8B7CF6',
+    backgroundColor: '#F3F4F6',
   },
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  ratingText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#666',
   },
-  dropdownText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
+  ratingTextSelected: {
+    color: '#8B7CF6',
   },
 });

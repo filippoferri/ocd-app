@@ -58,7 +58,6 @@ export default function Step3({ onNext, onBack, onClose }: Step3Props) {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
-            placeholder="3 minuti...\n\nes: sento un'attivazione che mi porterebbe a controllare più volte la chiusura della porta."
             placeholderTextColor="#999"
             value={description}
             onChangeText={setDescription}
@@ -67,12 +66,15 @@ export default function Step3({ onNext, onBack, onClose }: Step3Props) {
             autoFocus
           />
         </View>
+        <Text style={styles.helperText}>
+          es: sento un'attivazione che mi porterebbe a controllare più volte la chiusura della porta.
+        </Text>
       </View>
 
       <ButtonNav 
         label="CONTINUA" 
         onPress={handleContinue}
-        disabled={description.trim().length === 0}
+        disabled={description.trim().length === 0 || selectedType === null}
       />
 
       {/* Info Modal */}
@@ -180,14 +182,22 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     minHeight: 200,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#999',
     marginBottom: 20,
+    fontStyle: 'italic',
+    paddingHorizontal: 4,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
     color: '#333',
     lineHeight: 24,
-    outlineStyle: 'none',
   },
   modalOverlay: {
     flex: 1,

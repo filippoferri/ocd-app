@@ -53,11 +53,15 @@ export default function ForgotPasswordScreen({
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="francescaferri@gmail.com"
+              placeholder="nome@esempio.com"
+              placeholderTextColor="#B0B0B0"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              returnKeyType="done"
+              onSubmitEditing={handleSendReset}
             />
           </View>
 
@@ -83,6 +87,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     fontSize: 28,
@@ -139,6 +146,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    color: '#333',
   },
   sendButton: {
     backgroundColor: '#FF6B35',

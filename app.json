@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "OCD Help",
-    "slug": "ocd-help",
+    "name": "DOC Relief",
+    "slug": "doc-relief",
+    "scheme": "docrelief",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
@@ -13,7 +13,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
+          "image": "./assets/exercises/success.png",
           "resizeMode": "contain",
           "backgroundColor": "#4A90E2"
         }
@@ -23,10 +23,7 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4A90E2"
-      }
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   Image,
   ActivityIndicator,
@@ -134,25 +134,27 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ onExercisePress }) => {
 
       </View>
 
-      <ScrollView 
+      <FlatList
+        data={exercises}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderExerciseCard(item)}
+        numColumns={2}
         style={styles.exercisesContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingBottom: 100,
         }}
-      >
-        <View style={styles.exercisesGrid}>
-          {exercises.map(renderExerciseCard)}
-        </View>
-        
-        {exercises.length === 0 && !loading && !error && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              Nessun esercizio trovato
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+        columnWrapperStyle={styles.columnWrapper}
+        ListEmptyComponent={
+          !loading && !error ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                Nessun esercizio trovato
+              </Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 };
@@ -216,26 +218,17 @@ const styles = StyleSheet.create({
   exercisesContainer: {
     flex: 1,
   },
-  exercisesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  columnWrapper: {
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 20,
   },
   exerciseCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginBottom: 16,
     width: '48%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   cardImageContainer: {
     position: 'relative',

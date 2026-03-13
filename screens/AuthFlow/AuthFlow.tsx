@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import LoginScreen from './LoginScreen';
 import SignupScreen from './SignupScreen';
+import EmailLoginScreen from './EmailLoginScreen';
+import EmailSignupScreen from './EmailSignupScreen';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 import SuccessScreen from './SuccessScreen';
 import CheckEmailScreen from './CheckEmailScreen';
 import AuthService, { User } from '../../services/AuthService';
 
-type AuthScreen = 'login' | 'signup' | 'forgot' | 'success' | 'checkEmail';
+type AuthScreen = 
+  | 'login' 
+  | 'signup' 
+  | 'emailLogin' 
+  | 'emailSignup' 
+  | 'forgot' 
+  | 'success' 
+  | 'checkEmail';
 
 interface AuthFlowProps {
   onAuthSuccess: (user: User) => void;
@@ -17,7 +26,7 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
   const [userEmail, setUserEmail] = useState('');
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleEmailLogin = async (email: string, password: string) => {
     try {
       const user = await AuthService.login(email, password);
       onAuthSuccess(user);
@@ -26,13 +35,11 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
     }
   };
 
-  const handleSignup = async (fullName: string, email: string, password: string) => {
+  const handleEmailSignup = async (fullName: string, email: string, password: string) => {
     try {
-      const user = await AuthService.signup(fullName, email, password);
+      await AuthService.signup(fullName, email, password);
+      setUserEmail(email);
       setCurrentScreen('success');
-      setTimeout(() => {
-        onAuthSuccess(user);
-      }, 2000);
     } catch (error) {
       Alert.alert('Errore', error instanceof Error ? error.message : 'Errore durante la registrazione');
     }
@@ -49,11 +56,12 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
   };
 
   const handleResendEmail = async () => {
+    if (!userEmail) return;
     try {
-      // TODO: Implementare reinvio email
-      Alert.alert('Info', 'Email inviata nuovamente');
+      await AuthService.resendEmailConfirmation(userEmail);
+      Alert.alert('Successo', 'Email di conferma inviata nuovamente');
     } catch (error) {
-      Alert.alert('Errore', 'Errore durante il reinvio');
+      Alert.alert('Errore', error instanceof Error ? error.message : 'Errore durante il reinvio');
     }
   };
 
@@ -62,17 +70,35 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
       case 'login':
         return (
           <LoginScreen
-            onLogin={handleLogin}
             onNavigateToSignup={() => setCurrentScreen('signup')}
-            onForgotPassword={() => setCurrentScreen('forgot')}
+            onNavigateToEmailLogin={() => setCurrentScreen('emailLogin')}
           />
         );
       
       case 'signup':
         return (
           <SignupScreen
-            onSignup={handleSignup}
             onNavigateToLogin={() => setCurrentScreen('login')}
+            onNavigateToEmailSignup={() => setCurrentScreen('emailSignup')}
+          />
+        );
+
+      case 'emailLogin':
+        return (
+          <EmailLoginScreen
+            onLogin={handleEmailLogin}
+            onNavigateToSignup={() => setCurrentScreen('signup')}
+            onForgotPassword={() => setCurrentScreen('forgot')}
+            onBack={() => setCurrentScreen('login')}
+          />
+        );
+
+      case 'emailSignup':
+        return (
+          <EmailSignupScreen
+            onSignup={handleEmailSignup}
+            onNavigateToLogin={() => setCurrentScreen('emailLogin')}
+            onBack={() => setCurrentScreen('signup')}
           />
         );
       
@@ -87,9 +113,9 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
       case 'success':
         return (
           <SuccessScreen
-            title="Successo!"
-            subtitle="Il tuo account è stato creato con successo. Benvenuto in Odeecy!"
-            buttonText="CONTINUA"
+            title="Benvenuto!"
+            subtitle="Il tuo account è pronto. Ora puoi accedere e iniziare il tuo percorso."
+            buttonText="VAI AL LOGIN"
             onContinue={() => setCurrentScreen('login')}
           />
         );
@@ -106,9 +132,8 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
       default:
         return (
           <LoginScreen
-            onLogin={handleLogin}
             onNavigateToSignup={() => setCurrentScreen('signup')}
-            onForgotPassword={() => setCurrentScreen('forgot')}
+            onNavigateToEmailLogin={() => setCurrentScreen('emailLogin')}
           />
         );
     }

@@ -1,179 +1,108 @@
 -- Schema per il database Supabase
 -- Esegui questo script nel SQL Editor di Supabase
 
--- Tabella per gli esercizi
+-- 1. Tabella per gli ESERCIZI (Contenuto dell'app)
 CREATE TABLE IF NOT EXISTS exercises (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
-  intro_text TEXT NOT NULL, -- Descrizione - In cosa consiste l'esercizio
-  benefits_text TEXT NOT NULL, -- Perché - Lista di benefit
-  objective_text TEXT NOT NULL, -- Obiettivo (molto corto)
-  duration INTEGER NOT NULL, -- durata in minuti
-  image TEXT NOT NULL, -- path dell'immagine square
-  audio_guide TEXT, -- path del file audio principale nel storage
-  steps JSONB NOT NULL DEFAULT '[]'::jsonb, -- array di ExerciseStep con tipi: default, withaudio, withtextarea, withbreath
+  intro_text TEXT NOT NULL,
+  benefits_text TEXT NOT NULL,
+  objective_text TEXT NOT NULL,
+  duration INTEGER NOT NULL,
+  image TEXT NOT NULL,
+  audio_guide TEXT,
+  steps JSONB NOT NULL DEFAULT '[]'::jsonb,
   category TEXT DEFAULT 'generale',
   difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
-  is_active BOOLEAN DEFAULT true, -- per abilitare/disabilitare esercizi
-  sort_order INTEGER DEFAULT 0, -- per ordinare gli esercizi
+  is_active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indici per migliorare le performance
+-- Indici Esercizi
 CREATE INDEX IF NOT EXISTS idx_exercises_category ON exercises(category);
 CREATE INDEX IF NOT EXISTS idx_exercises_difficulty ON exercises(difficulty);
-CREATE INDEX IF NOT EXISTS idx_exercises_created_at ON exercises(created_at);
 
--- Trigger per aggiornare updated_at automaticamente
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+-- 2. Tabella PROFILI UTENTE (Estende auth.users)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT,
+  name TEXT,
+  role TEXT DEFAULT 'user',
+  onboarding_data JSONB DEFAULT '{}'::jsonb, -- Dati dell'onboarding salvati qui
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Trigger per creare automaticamente il profilo alla registrazione
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
+  INSERT INTO public.profiles (id, email, name)
+  VALUES (new.id, new.email, new.raw_user_meta_data->>'name');
+  RETURN new;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER update_exercises_updated_at BEFORE UPDATE ON exercises
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- Tabella per il progresso degli utenti (opzionale per il futuro)
-CREATE TABLE IF NOT EXISTS exercise_progress (
+-- 3. Tabella ATTIVITÀ UTENTE (Diario: Ossessioni, Compulsioni, Test)
+CREATE TABLE IF NOT EXISTS user_activities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  exercise_id UUID REFERENCES exercises(id) ON DELETE CASCADE,
-  user_id UUID, -- riferimento all'utente (se implementerai auth)
-  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  step_responses JSONB DEFAULT '{}'::jsonb, -- risposte ai passi
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  time TIME NOT NULL,
+  type TEXT NOT NULL, -- 'ossessione', 'compulsione', 'test'
+  symptom TEXT NOT NULL,
+  intensity TEXT NOT NULL,
+  description TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_exercise_progress_exercise_id ON exercise_progress(exercise_id);
-CREATE INDEX IF NOT EXISTS idx_exercise_progress_user_id ON exercise_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_activities_user_id ON user_activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_activities_date ON user_activities(date);
 
--- Politiche RLS (Row Level Security) - per ora permissive
-ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exercise_progress ENABLE ROW LEVEL SECURITY;
-
--- Politica per lettura pubblica degli esercizi
-CREATE POLICY "Exercises are viewable by everyone" ON exercises
-  FOR SELECT USING (true);
-
--- Politica per inserimento/aggiornamento solo per utenti autenticati (admin)
-CREATE POLICY "Exercises can be managed by authenticated users" ON exercises
-  FOR ALL USING (auth.role() = 'authenticated');
-
--- Politica per il progresso degli esercizi
-CREATE POLICY "Users can view and insert their own progress" ON exercise_progress
-  FOR ALL USING (auth.uid() = user_id OR auth.role() = 'authenticated');
-
--- Inserimento di alcuni esercizi di esempio con i nuovi tipi di step
-INSERT INTO exercises (name, intro_text, benefits_text, objective_text, duration, image, steps, category, difficulty, sort_order) VALUES
-(
-  'Respirazione Consapevole',
-  'Un esercizio di respirazione guidata per ridurre l''ansia e i pensieri ossessivi.',
-  '• Riduce l''ansia e lo stress\n• Calma la mente\n• Migliora la concentrazione\n• Diminuisce i pensieri intrusivi',
-  'Raggiungere uno stato di calma mentale',
-  10,
-  'breathing.jpg',
-  '[
-    {
-      "id": "preparation",
-      "type": "default",
-      "title": "Preparazione",
-      "content": ["Trova una posizione comoda", "Chiudi gli occhi", "Rilassa le spalle", "Porta l''attenzione al respiro"]
-    },
-    {
-      "id": "breathing-practice",
-      "type": "withbreath",
-      "title": "Pratica di Respirazione",
-      "content": ["Segui il ritmo del cerchio", "Inspira quando si espande", "Espira quando si contrae"],
-      "audioFile": "breathing-guide.mp3",
-      "duration": 5
-    },
-    {
-      "id": "reflection",
-      "type": "withtextarea",
-      "title": "Riflessione",
-      "placeholder": "Come ti senti dopo l''esercizio? Hai notato cambiamenti nel tuo stato d''animo?"
-    }
-  ]'::jsonb,
-  'respirazione',
-  'easy',
-  1
-),
-(
-  'Meditazione Guidata',
-  'Il Body Scan è una tecnica di mindfulness che ti aiuta a sviluppare consapevolezza del tuo corpo e delle sensazioni fisiche.',
-  '• Aumenta la consapevolezza\n• Riduce i pensieri ripetitivi\n• Migliora l''autocontrollo\n• Favorisce il rilassamento profondo',
-  'Sviluppare presenza mentale',
-  15,
-  'mindfulness.jpg',
-  '[
-    {
-      "id": "preparation",
-      "type": "default",
-      "title": "Preparazione",
-      "content": ["Trova una posizione comoda, seduto o sdraiato", "Chiudi gli occhi o abbassa lo sguardo", "Fai 3 respiri profondi per rilassarti"]
-    },
-    {
-      "id": "guided-meditation",
-      "type": "withaudio",
-      "title": "Meditazione Guidata",
-      "content": ["Segui la guida audio", "Porta l''attenzione al momento presente", "Osserva senza giudicare"],
-      "audioFile": "meditation-step2-practice.mp3",
-      "duration": 10
-    },
-    {
-      "id": "experience",
-      "type": "withtextarea",
-      "title": "Esperienza",
-      "placeholder": "Descrivi la tua esperienza con questo esercizio. Quali sensazioni hai percepito?"
-    }
-  ]'::jsonb,
-  'mindfulness',
-  'medium',
-  2
-),
-(
-  'Contrasta la Compulsione',
-  'Questo esercizio ti aiuta a riconoscere e resistere alle compulsioni attraverso tecniche di esposizione graduale.',
-  '• Riduce la forza delle compulsioni\n• Aumenta la tolleranza all''ansia\n• Migliora il senso di controllo\n• Sviluppa strategie di coping',
-  'Resistere alle compulsioni e tollerare l''ansia',
-  20,
-  'contrasta-compulsione.jpg',
-  '[
-    {
-      "id": "identify-trigger",
-      "type": "withtextarea",
-      "title": "Identifica il Trigger",
-      "placeholder": "Descrivi la situazione o il pensiero che ha scatenato l''impulso compulsivo..."
-    },
-    {
-      "id": "resistance-techniques",
-      "type": "withaudio",
-      "title": "Tecniche di Resistenza",
-      "content": ["Riconosci l''impulso senza agire", "Respira profondamente", "Ricorda che l''ansia è temporanea", "Usa la tecnica del surfing"],
-      "audioFile": "resistance-techniques.mp3",
-      "duration": 8
-    },
-    {
-      "id": "outcome-reflection",
-      "type": "withtextarea",
-      "title": "Risultato",
-      "placeholder": "Come è andata? Sei riuscito a resistere? Cosa hai imparato da questa esperienza?"
-    }
-  ]'::jsonb,
-  'exposure',
-  'medium',
-  3
+-- 4. Tabella PROGRESSO ESERCIZI
+CREATE TABLE IF NOT EXISTS exercise_progress (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  exercise_id UUID REFERENCES exercises(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  step_responses JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Creazione del bucket per i file audio (da eseguire nell'interfaccia Storage di Supabase)
--- INSERT INTO storage.buckets (id, name, public) VALUES ('exercise-audio', 'exercise-audio', true);
+CREATE INDEX IF NOT EXISTS idx_exercise_progress_user_id ON exercise_progress(user_id);
 
--- Politiche per il bucket audio
--- CREATE POLICY "Audio files are publicly accessible" ON storage.objects
---   FOR SELECT USING (bucket_id = 'exercise-audio');
+-- 5. POLITICHE DI SICUREZZA (RLS)
 
--- CREATE POLICY "Authenticated users can upload audio" ON storage.objects
---   FOR INSERT WITH CHECK (bucket_id = 'exercise-audio' AND auth.role() = 'authenticated');
+-- Abilita RLS su tutte le tabelle
+ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exercise_progress ENABLE ROW LEVEL SECURITY;
+
+-- ESERCIZI: Lettura pubblica, Modifica solo admin (qui semplificato a authenticated per demo)
+CREATE POLICY "Exercises are viewable by everyone" ON exercises FOR SELECT USING (true);
+CREATE POLICY "Exercises managed by auth users" ON exercises FOR ALL USING (auth.role() = 'authenticated');
+
+-- PROFILI: Utenti vedono e modificano solo il proprio
+CREATE POLICY "Users view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+-- ATTIVITÀ: Utenti vedono e modificano solo le proprie
+CREATE POLICY "Users view own activities" ON user_activities FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own activities" ON user_activities FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own activities" ON user_activities FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users delete own activities" ON user_activities FOR DELETE USING (auth.uid() = user_id);
+
+-- PROGRESSO: Utenti vedono e modificano solo il proprio
+CREATE POLICY "Users view own progress" ON exercise_progress FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own progress" ON exercise_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Dati iniziali Esercizi (Se servono)
+-- ... (inserire qui gli INSERT se necessario)

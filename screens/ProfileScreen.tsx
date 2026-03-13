@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { User, UserActivity } from '../services/AuthService';
+import { User } from '../services/AuthService';
+import { UserActivity } from '../types/Activity';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -9,7 +10,7 @@ interface ProfileScreenProps {
   onLogout: () => void;
   userActivities: UserActivity[];
   testCompleted: boolean;
-  testResult: number | null;
+  testResult: string | null;
   onRetakeTest: () => void;
   onResetOnboarding?: () => void;
 }
@@ -94,7 +95,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.settingItem}>
-                <Text style={styles.settingItemText}>Open Sources used by ODEECY</Text>
+                <Text style={styles.settingItemText}>Open Sources used by DOC Relief</Text>
                 <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
@@ -140,7 +141,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.versionText}>Odeecy v1.0.0</Text>
+            <Text style={styles.versionText}>DOC Relief v1.0.0</Text>
           </ScrollView>
         </View>
       </Modal>
@@ -422,11 +423,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   settingItemLeft: {
     flexDirection: 'row',
@@ -478,11 +476,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   testResultHeader: {
     flexDirection: 'row',

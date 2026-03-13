@@ -130,6 +130,7 @@ export default function MoodFlow({ visible, onClose, onSave }: MoodFlowProps) {
                     backgroundColor: selectedMood === mood ? getMoodColor(mood) : '#E8E8E8',
                   },
                 ]}
+                focusable={false}
                 onPress={() => handleMoodSelect(mood)}
               >
                 {getMoodComponent(mood)}

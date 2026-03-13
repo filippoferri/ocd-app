@@ -1,30 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
+import { UserActivity } from '../types/Activity';
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'therapist' | 'admin';
+  avatar_url?: string;
   createdAt: string;
-  lastLogin?: string;
-}
-
-export interface UserActivity {
-  id: string;
-  date: string;
-  time: string;
-  type: 'ossessione' | 'compulsione';
-  symptom: string;
-  intensity: string;
-  description: string;
-}
-
-export interface UserStats {
-  totalActivations: number;
-  totalExercises: number;
-  weeklyGoal: number;
-  weeklyProgress: number;
-  streak: number;
 }
 
 export interface OnboardingData {
@@ -40,10 +23,16 @@ export interface OnboardingData {
   completedAt: string;
 }
 
+export interface UserStats {
+  totalActivations: number;
+  totalExercises: number;
+  weeklyGoal: number;
+  weeklyProgress: number;
+  streak: number;
+}
+
 class AuthService {
   private static instance: AuthService;
-  private currentUser: User | null = null;
-  private userActivities: UserActivity[] = [];
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -52,201 +41,203 @@ class AuthService {
     return AuthService.instance;
   }
 
-  // Autenticazione
-  async login(email: string, password: string): Promise<User> {
-    try {
-      // TODO: Implementare chiamata API reale
-      // Per ora simuliamo con dati locali
-      const users = await this.getStoredUsers();
-      let user = users.find(u => u.email === email);
-      
-      if (!user) {
-        // Per demo, creiamo automaticamente un utente se non esiste
-        if (email === 'test@test.com' || email.includes('@')) {
-          user = {
-            id: Date.now().toString(),
-            name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-            email: email,
-            role: 'user' as const,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-          };
-          const users = await this.getStoredUsers();
-           users.push(user);
-           await AsyncStorage.setItem('users', JSON.stringify(users));
-        } else {
-          throw new Error('Email non valida');
-        }
-      }
+  // ---------- Authentication ----------
 
-      // TODO: Verificare password hashata
-      // Per ora accettiamo qualsiasi password per demo
-      
-      user.lastLogin = new Date().toISOString();
-      await this.updateStoredUser(user);
-      
-      this.currentUser = user;
-      await AsyncStorage.setItem('currentUser', JSON.stringify(user));
-      
-      // Carica le attività dell'utente
-      await this.loadUserActivities();
-      
-      return user;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Errore durante il login');
-    }
+  async login(email: string, password: string): Promise<User> {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error('Login fallito');
+
+    return this.mapSessionUser(data.user);
   }
 
   async signup(name: string, email: string, password: string): Promise<User> {
-    try {
-      // Verifica se l'utente esiste già
-      const users = await this.getStoredUsers();
-      const existingUser = users.find(u => u.email === email);
-      
-      if (existingUser) {
-        throw new Error('Utente già registrato');
-      }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
 
-      const newUser: User = {
-        id: Date.now().toString(),
-        name,
-        email,
-        role: 'user',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error('Registrazione fallita');
 
-      // Salva il nuovo utente
-      users.push(newUser);
-      await AsyncStorage.setItem('users', JSON.stringify(users));
-      
-      this.currentUser = newUser;
-      await AsyncStorage.setItem('currentUser', JSON.stringify(newUser));
-      
-      return newUser;
-    } catch (error) {
-      throw new Error('Errore durante la registrazione');
-    }
+    return this.mapSessionUser(data.user);
   }
 
   async logout(): Promise<void> {
-    this.currentUser = null;
-    this.userActivities = [];
-    await AsyncStorage.removeItem('currentUser');
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(error.message);
   }
 
   async getCurrentUser(): Promise<User | null> {
-    if (this.currentUser) {
-      return this.currentUser;
-    }
-
+    console.log('🔍 AuthService: Recupero sessione...');
     try {
-      const userData = await AsyncStorage.getItem('currentUser');
-      if (userData) {
-        this.currentUser = JSON.parse(userData);
-        // Carica le attività dell'utente
-        await this.loadUserActivities();
-        return this.currentUser;
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('❌ AuthService: Errore getSession:', error.message);
+        return null;
       }
-    } catch (error) {
-      console.error('Errore nel recupero utente corrente:', error);
+      if (!session?.user) {
+        console.log('ℹ️ AuthService: Nessuna sessione trovata');
+        return null;
+      }
+      console.log('✅ AuthService: Sessione trovata per', session.user.email);
+      return this.mapSessionUser(session.user);
+    } catch (e) {
+      console.error('❌ AuthService: Errore imprevisto in getCurrentUser:', e);
+      return null;
     }
-    
-    return null;
   }
 
-  // Gestione attività utente
-  async addActivity(activity: UserActivity): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('Utente non autenticato');
-    }
+  async requestPasswordReset(email: string): Promise<void> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw new Error(error.message);
+  }
 
-    console.log('AuthService: Aggiunta attività:', activity);
-    this.userActivities.push(activity);
-    console.log('AuthService: Attività totali dopo aggiunta:', this.userActivities.length);
-    await this.saveUserActivities();
-    console.log('AuthService: Attività salvata con successo');
+  async resetPassword(_token: string, newPassword: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new Error(error.message);
+  }
+
+  async resendEmailConfirmation(email: string): Promise<void> {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  // ---------- Social Authentication ----------
+
+  async signInWithGoogle(): Promise<void> {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: Platform.OS === 'web' ? window.location.origin : 'docrelief://auth-callback',
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async signInWithFacebook(): Promise<void> {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: Platform.OS === 'web' ? window.location.origin : 'docrelief://auth-callback',
+      },
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async signInWithApple(): Promise<void> {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In è disponibile solo su iOS');
+    }
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: 'docrelief://auth-callback',
+      },
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  // ---------- Activities (CRUD) ----------
+
+  async addActivity(activity: Omit<UserActivity, 'id'> & { id?: string }): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Utente non autenticato');
+
+    const { error } = await supabase.from('activities').insert({
+      user_id: session.user.id,
+      date: activity.date,
+      time: activity.time,
+      type: activity.type,
+      symptom: activity.symptom || '',
+      intensity: activity.intensity || '',
+      description: activity.description || '',
+    });
+
+    if (error) throw new Error(error.message);
   }
 
   async getUserActivities(): Promise<UserActivity[]> {
-    if (!this.currentUser) {
-      console.log('AuthService: Nessun utente autenticato');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return [];
+
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('date', { ascending: false })
+      .order('time', { ascending: false });
+
+    if (error) {
+      console.error('Errore nel recupero attività:', error.message);
       return [];
     }
 
-    console.log('AuthService: Caricamento attività per utente:', this.currentUser.id);
-    try {
-      const activitiesData = await AsyncStorage.getItem(`activities_${this.currentUser.id}`);
-      console.log('AuthService: Dati raw da AsyncStorage:', activitiesData);
-      if (activitiesData) {
-        this.userActivities = JSON.parse(activitiesData);
-        console.log('AuthService: Attività parsate:', this.userActivities);
-      } else {
-        console.log('AuthService: Nessun dato trovato in AsyncStorage');
-      }
-    } catch (error) {
-      console.error('Errore nel recupero attività:', error);
-    }
-
-    // Ordina le attivazioni per data e ora dal più recente al più vecchio
-    const sortedActivities = this.userActivities.sort((a, b) => {
-      const dateTimeA = new Date(`${a.date}T${a.time}`);
-      const dateTimeB = new Date(`${b.date}T${b.time}`);
-      return dateTimeB.getTime() - dateTimeA.getTime();
-    });
-
-    console.log('AuthService: Ritorno attività ordinate:', sortedActivities.length);
-    return sortedActivities;
+    return (data || []).map(row => ({
+      id: row.id,
+      date: row.date,
+      time: row.time,
+      type: row.type,
+      symptom: row.symptom,
+      intensity: row.intensity,
+      description: row.description,
+    }));
   }
 
   async deleteActivity(activityId: string): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('Utente non autenticato');
-    }
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', activityId);
 
-    console.log('AuthService: Eliminazione attività:', activityId);
-    this.userActivities = this.userActivities.filter(a => a.id !== activityId);
-    console.log('AuthService: Attività totali dopo eliminazione:', this.userActivities.length);
-    await this.saveUserActivities();
-    console.log('AuthService: Attività eliminata con successo');
+    if (error) throw new Error(error.message);
   }
 
-  async updateActivity(activityId: string, updatedActivity: Partial<UserActivity>): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('Utente non autenticato');
-    }
+  async updateActivity(activityId: string, updates: Partial<UserActivity>): Promise<void> {
+    const { error } = await supabase
+      .from('activities')
+      .update(updates)
+      .eq('id', activityId);
 
-    console.log('AuthService: Aggiornamento attività:', activityId, updatedActivity);
-    const index = this.userActivities.findIndex(a => a.id === activityId);
-    if (index !== -1) {
-      this.userActivities[index] = { ...this.userActivities[index], ...updatedActivity };
-      await this.saveUserActivities();
-      console.log('AuthService: Attività aggiornata con successo');
-    } else {
-      throw new Error('Attività non trovata');
-    }
+    if (error) throw new Error(error.message);
   }
 
   async getUserStats(): Promise<UserStats> {
     const activities = await this.getUserActivities();
     const now = new Date();
-    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-    
-    const totalActivations = activities.filter(a => a.type === 'compulsione').length;
-    const totalExercises = activities.filter(a => a.type === 'ossessione').length;
-    
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+
+    const totalActivations = activities.filter(a =>
+      a.type === 'ossessione' || a.type === 'compulsione'
+    ).length;
+    const totalExercises = activities.filter(a =>
+      a.description.includes('Esercizio completato:')
+    ).length;
+
     const weeklyActivities = activities.filter(a => {
       const activityDate = new Date(a.date);
       return activityDate >= weekStart;
     });
-    
-    const weeklyGoal = 3; // Obiettivo settimanale fisso per ora
+
+    const weeklyGoal = 3;
     const weeklyProgress = weeklyActivities.length;
-    
-    // Calcolo streak (giorni consecutivi con attività)
+
     let streak = 0;
     const today = new Date();
     for (let i = 0; i < 30; i++) {
@@ -256,7 +247,7 @@ class AuthService {
         const activityDate = new Date(a.date);
         return activityDate.toDateString() === checkDate.toDateString();
       });
-      
+
       if (dayActivities.length > 0) {
         streak++;
       } else {
@@ -264,164 +255,91 @@ class AuthService {
       }
     }
 
-    return {
-      totalActivations,
-      totalExercises,
-      weeklyGoal,
-      weeklyProgress,
-      streak,
-    };
+    return { totalActivations, totalExercises, weeklyGoal, weeklyProgress, streak };
   }
 
-  // Metodi privati per gestione storage
-  private async getStoredUsers(): Promise<User[]> {
-    try {
-      const usersData = await AsyncStorage.getItem('users');
-      return usersData ? JSON.parse(usersData) : [];
-    } catch (error) {
-      return [];
-    }
-  }
+  // ---------- Onboarding (Profile) ----------
 
-  private async updateStoredUser(user: User): Promise<void> {
-    const users = await this.getStoredUsers();
-    const index = users.findIndex(u => u.id === user.id);
-    if (index !== -1) {
-      users[index] = user;
-      await AsyncStorage.setItem('users', JSON.stringify(users));
-    }
-  }
-
-  private async storeUser(user: User): Promise<void> {
-    const users = await this.getStoredUsers();
-    users.push(user);
-    await AsyncStorage.setItem('users', JSON.stringify(users));
-  }
-
-  private async loadUserActivities(): Promise<void> {
-    if (!this.currentUser) return;
-    
-    try {
-      const activitiesData = await AsyncStorage.getItem(`activities_${this.currentUser.id}`);
-      if (activitiesData) {
-        this.userActivities = JSON.parse(activitiesData);
-        console.log('AuthService: Attività caricate nel login:', this.userActivities.length);
-      } else {
-        this.userActivities = [];
-        console.log('AuthService: Nessuna attività trovata, inizializzato array vuoto');
-      }
-    } catch (error) {
-      console.error('Errore nel caricamento attività:', error);
-      this.userActivities = [];
-    }
-  }
-
-  private async saveUserActivities(): Promise<void> {
-    if (!this.currentUser) return;
-    
-    try {
-      await AsyncStorage.setItem(
-        `activities_${this.currentUser.id}`,
-        JSON.stringify(this.userActivities)
-      );
-    } catch (error) {
-      console.error('Errore nel salvataggio attività:', error);
-    }
-  }
-
-  async requestPasswordReset(email: string): Promise<void> {
-    try {
-      // TODO: Implementare chiamata API per reset password
-      // Per ora simuliamo l'invio dell'email
-      const users = await this.getStoredUsers();
-      const user = users.find(u => u.email === email);
-      
-      if (!user) {
-        throw new Error('Email non trovata');
-      }
-      
-      // Simulazione invio email
-      console.log(`Email di reset password inviata a: ${email}`);
-      
-      // In una implementazione reale, qui invieresti l'email
-      return Promise.resolve();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Errore durante l\'invio dell\'email di reset');
-    }
-  }
-
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    // TODO: Implementare con backend
-    console.log('Password reset with token:', token);
-  }
-
-  // Gestione onboarding
   async hasCompletedOnboarding(): Promise<boolean> {
-    if (!this.currentUser) {
-      return false;
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return false;
 
-    try {
-      const onboardingData = await AsyncStorage.getItem(`onboarding_${this.currentUser.id}`);
-      return onboardingData !== null;
-    } catch (error) {
-      console.error('Errore nel controllo onboarding:', error);
-      return false;
-    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error || !data) return false;
+    return data.onboarding_completed === true;
   }
 
-  async saveOnboardingData(data: OnboardingData): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('Utente non autenticato');
-    }
+  async saveOnboardingData(onboardingData: OnboardingData): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Utente non autenticato');
 
-    try {
-      const onboardingWithTimestamp = {
-        ...data,
-        completedAt: new Date().toISOString()
-      };
-      
-      await AsyncStorage.setItem(
-        `onboarding_${this.currentUser.id}`,
-        JSON.stringify(onboardingWithTimestamp)
-      );
-      
-      console.log('AuthService: Dati onboarding salvati con successo');
-    } catch (error) {
-      console.error('Errore nel salvataggio dati onboarding:', error);
-      throw new Error('Errore nel salvataggio dei dati onboarding');
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: session.user.id,
+        onboarding_completed: true,
+        wants_ocd_test: onboardingData.wantsOCDTest,
+      });
+
+    if (error) throw new Error(error.message);
   }
 
   async getOnboardingData(): Promise<OnboardingData | null> {
-    if (!this.currentUser) {
-      return null;
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
 
-    try {
-      const onboardingData = await AsyncStorage.getItem(`onboarding_${this.currentUser.id}`);
-      return onboardingData ? JSON.parse(onboardingData) : null;
-    } catch (error) {
-      console.error('Errore nel recupero dati onboarding:', error);
-      return null;
-    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('onboarding_completed, wants_ocd_test')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error || !data || !data.onboarding_completed) return null;
+
+    return {
+      knowsOCD: false,
+      hasTherapist: false,
+      age: 0,
+      gender: 'Altro',
+      fragilityDuration: '',
+      fragilityLevel: 0,
+      dailyImpact: 0,
+      wantsOCDTest: data.wants_ocd_test || false,
+      currentMood: 'neutral',
+      completedAt: '',
+    };
   }
 
   async resetOnboarding(): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('Utente non autenticato');
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Utente non autenticato');
 
-    try {
-      await AsyncStorage.removeItem(`onboarding_${this.currentUser.id}`);
-      console.log('AuthService: Onboarding resettato con successo');
-    } catch (error) {
-      console.error('Errore nel reset onboarding:', error);
-      throw new Error('Errore nel reset dell\'onboarding');
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        onboarding_completed: false,
+        wants_ocd_test: false,
+      })
+      .eq('id', session.user.id);
+
+    if (error) throw new Error(error.message);
+  }
+
+  // ---------- Helpers ----------
+
+  private mapSessionUser(authUser: any): User {
+    return {
+      id: authUser.id,
+      name: authUser.user_metadata?.name || '',
+      email: authUser.email || '',
+      avatar_url: authUser.user_metadata?.avatar_url,
+      createdAt: authUser.created_at,
+    };
   }
 }
 

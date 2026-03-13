@@ -2,11 +2,18 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
+import Select from '../../components/Select';
 
 interface Step6Props {
   onNext: (gender: 'Maschio' | 'Femmina' | 'Altro') => void;
   onBack: () => void;
 }
+
+const genderOptions = [
+  { label: 'Maschio', value: 'Maschio' },
+  { label: 'Femmina', value: 'Femmina' },
+  { label: 'Altro', value: 'Altro' },
+];
 
 export default function Step6({ onNext, onBack }: Step6Props) {
   const [selectedGender, setSelectedGender] = useState<'Maschio' | 'Femmina' | 'Altro' | null>(null);
@@ -37,46 +44,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
           />
         </View>
         
-        <View style={styles.optionsContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.optionButton,
-              selectedGender === 'Maschio' && styles.optionButtonSelected
-            ]}
-            onPress={() => setSelectedGender('Maschio')}
-          >
-            <Text style={[
-              styles.optionText,
-              selectedGender === 'Maschio' && styles.optionTextSelected
-            ]}>Maschio</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
-              styles.optionButton,
-              selectedGender === 'Femmina' && styles.optionButtonSelected
-            ]}
-            onPress={() => setSelectedGender('Femmina')}
-          >
-            <Text style={[
-              styles.optionText,
-              selectedGender === 'Femmina' && styles.optionTextSelected
-            ]}>Femmina</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
-              styles.optionButton,
-              selectedGender === 'Altro' && styles.optionButtonSelected
-            ]}
-            onPress={() => setSelectedGender('Altro')}
-          >
-            <Text style={[
-              styles.optionText,
-              selectedGender === 'Altro' && styles.optionTextSelected
-            ]}>Altro</Text>
-          </TouchableOpacity>
-        </View>
+        <Select 
+          options={genderOptions}
+          selectedValue={selectedGender}
+          onSelect={(val) => setSelectedGender(val as any)}
+        />
       </View>
 
       <ButtonNav 
@@ -114,8 +86,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
   },
   title: {
     fontSize: 28,
@@ -123,6 +95,8 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginBottom: 40,
+    minHeight: 80,
+    textAlignVertical: 'center',
   },
   imageContainer: {
     width: 200,
@@ -132,35 +106,5 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-  },
-  optionsContainer: {
-    width: '100%',
-    gap: 16,
-  },
-  optionButton: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  optionButtonSelected: {
-    borderColor: '#8B7CF6',
-    backgroundColor: '#F3F4F6',
-  },
-  optionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    textAlign: 'center',
-  },
-  optionTextSelected: {
-    color: '#8B7CF6',
   },
 });

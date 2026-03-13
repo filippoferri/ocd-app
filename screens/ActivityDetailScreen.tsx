@@ -15,7 +15,7 @@ import ButtonNav from '../components/ButtonNav';
 interface ActivityDetailScreenProps {
   activity: {
     id: string;
-    type: 'ossessione' | 'compulsione';
+    type: 'ossessione' | 'compulsione' | 'test';
     symptom: string;
     intensity: string;
     description: string;
@@ -99,8 +99,7 @@ export default function ActivityDetailScreen({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Verifica se è un esercizio (ha una durata)
-  const isExercise = activity.duration !== undefined;
+  const isExercise = activity.description.includes('Esercizio completato:');
 
   const handleSave = () => {
     if (hasChanges) {
@@ -147,16 +146,21 @@ export default function ActivityDetailScreen({
         <Text style={styles.title}>
           {isExercise ? (
             activity.description.includes('Esercizio completato:') 
-              ? activity.description.match(/Esercizio completato: (.+?)\. Durata:/)?.[1] || 'Esercizio'
+              ? activity.description.match(/Esercizio completato: (.+?)(\.|$)/)?.[1] || 'Esercizio'
               : 'Esercizio'
           ) : (activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
         </Text>
 
-        {isExercise ? (
-          /* Exercise Content */
+          {isExercise ? (
           <View style={styles.exerciseContent}>
-            <Text style={styles.exerciseDescription}>Esercizio completato</Text>
-            <Text style={styles.exerciseDuration}>Durata: {activity.duration}</Text>
+            <TextInput
+              style={styles.descriptionInput}
+              value={description}
+              onChangeText={handleDescriptionChange}
+              placeholder="Aggiungi una descrizione..."
+              multiline
+              textAlignVertical="top"
+            />
           </View>
         ) : (
           /* Regular Activity Content */
@@ -209,14 +213,11 @@ export default function ActivityDetailScreen({
         )}
       </ScrollView>
 
-      {/* Fixed Bottom Button - Solo per attività normali */}
-      {!isExercise && (
-        <ButtonNav 
-          label="SALVA" 
-          onPress={handleSave}
-          disabled={!hasChanges}
-        />
-      )}
+      <ButtonNav 
+        label="SALVA" 
+        onPress={handleSave}
+        disabled={!hasChanges}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -320,14 +321,8 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   intensityLabel: {
     fontSize: 14,
@@ -350,14 +345,8 @@ const styles = StyleSheet.create({
     padding: 24,
     margin: 20,
     minWidth: 280,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   confirmTitle: {
     fontSize: 18,

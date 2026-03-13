@@ -101,8 +101,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
   },
   title: {
     fontSize: 28,
@@ -110,6 +110,8 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginBottom: 40,
+    minHeight: 80,
+    textAlignVertical: 'center',
   },
   imageContainer: {
     width: 200,
@@ -123,19 +125,17 @@ const styles = StyleSheet.create({
   optionsContainer: {
     flexDirection: 'row',
     gap: 20,
+    width: '100%',
   },
   optionButton: {
+    flex: 1,
     backgroundColor: 'white',
     borderRadius: 12,
     paddingVertical: 16,
-    paddingHorizontal: 32,
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   optionButtonSelected: {
     borderColor: '#8B7CF6',

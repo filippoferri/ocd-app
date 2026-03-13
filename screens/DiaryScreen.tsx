@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  FlatList,
   ScrollView,
   StyleSheet,
   Modal,
@@ -20,7 +21,7 @@ interface ActivationEntry {
   id: string;
   date: string;
   time: string;
-  type: 'ossessione' | 'compulsione';
+  type: 'ossessione' | 'compulsione' | 'test';
   symptom: string;
   intensity: string;
   description: string;
@@ -34,7 +35,7 @@ interface DiaryScreenProps {
   onActivityPress: (activity: ActivationEntry) => void;
   activeTab: 'home' | 'explore';
   testCompleted: boolean;
-  testResult: number | null;
+  testResult: string | null;
   onRetakeTest: () => void;
   userActivities: ActivationEntry[];
   onProfilePress?: () => void;
@@ -149,13 +150,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   };
 
   const handleEntryPress = (entry: ActivationEntry) => {
-    if (isExerciseEntry(entry)) {
-      const duration = getExerciseDuration(entry.description);
-      const entryWithDuration = { ...entry, duration };
-      onActivityPress(entryWithDuration);
-    } else {
-      onActivityPress(entry);
-    }
+    onActivityPress(entry);
   };
 
   const handleDescriptionChange = (text: string) => {
@@ -166,12 +161,11 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   const toggleEdit = async () => {
     if (isEditing && hasChanges && selectedEntry) {
       try {
-        const updatedEntry = { ...selectedEntry, description: editedDescription };
-        await AuthService.updateActivity(selectedEntry.id, updatedEntry);
+        await AuthService.updateActivity(selectedEntry.id, { description: editedDescription });
         setActivations(prev => 
-          prev.map(a => a.id === selectedEntry.id ? updatedEntry : a)
+          prev.map(a => a.id === selectedEntry.id ? { ...a, description: editedDescription } : a)
         );
-        setSelectedEntry(updatedEntry);
+        setSelectedEntry({ ...selectedEntry, description: editedDescription });
         setHasChanges(false);
       } catch (error) {
         console.error('Error updating activity:', error);
@@ -184,12 +178,11 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   const handleSave = async () => {
     if (hasChanges && selectedEntry) {
       try {
-        const updatedEntry = { ...selectedEntry, description: editedDescription };
-        await AuthService.updateActivity(selectedEntry.id, updatedEntry);
+        await AuthService.updateActivity(selectedEntry.id, { description: editedDescription });
         setActivations(prev => 
-          prev.map(a => a.id === selectedEntry.id ? updatedEntry : a)
+          prev.map(a => a.id === selectedEntry.id ? { ...a, description: editedDescription } : a)
         );
-        setSelectedEntry(updatedEntry);
+        setSelectedEntry({ ...selectedEntry, description: editedDescription });
         setHasChanges(false);
         setIsEditing(false);
       } catch (error) {
@@ -273,8 +266,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
                   <Text style={styles.intensityLabel}>Paura di contaminazioni</Text>
                 </View>
                 
-                <Text style={styles.descriptionLabel}>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut laoreet faucibus ipsum, vitae feugiat leo ullamcorper vel.</Text>
-                <Text style={styles.descriptionLabel}>Proin convallis effendit elementum. Nulla vehicula consequat purus non porttitor.</Text>
+                <Text style={styles.descriptionLabel}>{selectedEntry.description}</Text>
                 
                 <View style={[
                   styles.intensityBadge,
@@ -371,6 +363,14 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
 
   const todayActivations = getActivationsForDate(selectedDate);
 
+  useEffect(() => {
+    if (selectedEntry) {
+      setEditedDescription(selectedEntry.description);
+      setIsEditing(false);
+      setHasChanges(false);
+    }
+  }, [selectedEntry]);
+
   const getExerciseImage = (description: string) => {
     if (description.includes('Respirazione')) {
       return require('../assets/exercises/body-scan.png');
@@ -389,7 +389,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   };
 
   const getExerciseName = (description: string) => {
-    const match = description.match(/Esercizio completato: (.+?)\. Durata:/);
+    const match = description.match(/Esercizio completato: (.+?)(\.|$)/);
     return match ? match[1] : 'Esercizio';
   };
 
@@ -410,45 +410,51 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <FlatList
+        data={todayActivations}
+        keyExtractor={(item) => item.id}
         style={styles.activationsList}
         contentContainerStyle={styles.scrollContent}
-      >
-      {testCompleted && testResult !== null && (
-        <View style={styles.testLogCard}>
-          <View style={styles.testLogHeader}>
-            <View style={styles.testLogIcon}>
-              <Ionicons name="clipboard-outline" size={20} color="#8B7CF6" />
-            </View>
-            <Text style={styles.testLogTitle}>Test DOC Completato</Text>
-            <TouchableOpacity onPress={onRetakeTest} style={styles.retakeIconButton}>
-              <Ionicons name="refresh" size={18} color="#8B7CF6" />
-            </TouchableOpacity>
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Nessuna attivazione registrata per oggi</Text>
           </View>
-          <View style={styles.testLogContent}>
-            <View style={styles.testLogScoreContainer}>
-              <View style={styles.testLogScoreCircle}>
-                <Text style={styles.testLogScoreText}>{testResult}</Text>
-              </View>
-              <View style={styles.testLogInfo}>
-                <Text style={styles.testLogResultTitle}>Disturbo Ossessivo Compulsivo</Text>
-                <Text style={styles.testLogResultStatus}>PRESENTE</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
-      
-      {todayActivations.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Nessuna attivazione registrata per oggi</Text>
-        </View>
-      ) : (
-        todayActivations.map((activation) => {
+        }
+        renderItem={({ item: activation }) => {
           const isExercise = isExerciseEntry(activation);
+          const isTest = activation.type === 'test';
+          
+          if (isTest) {
+            return (
+              <View style={styles.testLogCard}>
+                <View style={styles.testLogHeader}>
+                  <View style={styles.testLogIcon}>
+                    <Ionicons name="clipboard-outline" size={20} color="#8B7CF6" />
+                  </View>
+                  <Text style={styles.testLogTitle}>Test DOC Completato</Text>
+                  <Text style={styles.testLogTime}>{activation.time}</Text>
+                </View>
+                <View style={styles.testLogContent}>
+                  <View style={styles.testLogScoreContainer}>
+                    <View style={styles.testLogScoreCircle}>
+                      <Text style={styles.testLogScoreText}>{testResult}</Text>
+                    </View>
+                    <View style={styles.testLogInfo}>
+                      <Text style={styles.testLogResultTitle}>Disturbo Ossessivo Compulsivo</Text>
+                      <Text style={styles.testLogResultStatus}>PRESENTE</Text>
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={onRetakeTest} style={styles.retakeTestButton}>
+                  <Ionicons name="refresh" size={16} color="#8B7CF6" style={styles.retakeTestIcon} />
+                  <Text style={styles.retakeTestText}>Ripeti il test</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          
           return (
             <TouchableOpacity
-              key={activation.id}
               style={[
                 styles.activationItem,
                 { borderLeftColor: isExercise ? '#8B7CF6' : (intensityColors[activation.intensity] || '#666') }
@@ -481,9 +487,8 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
               <Text style={styles.activationTime}>{activation.time}</Text>
             </TouchableOpacity>
           );
-        })
-      )}
-      </ScrollView>
+        }}
+      />
 
       {renderCalendar()}
       {renderEntryDetail()}
@@ -691,14 +696,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
   },
   saveButton: {
     backgroundColor: '#FF8C42',
@@ -795,11 +792,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   testLogHeader: {
     flexDirection: 'row',
@@ -834,8 +828,23 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
-  retakeIconButton: {
-    padding: 4,
+  retakeTestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  retakeTestIcon: {
+    marginRight: 6,
+  },
+  retakeTestText: {
+    fontSize: 14,
+    color: '#8B7CF6',
+    fontWeight: '500',
   },
   testLogContent: {
     paddingLeft: 44,
@@ -871,6 +880,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#8B7CF6',
+  },
+  testLogTime: {
+    fontSize: 14,
+    color: '#8B7CF6',
+    fontWeight: '500',
+    marginLeft: 'auto',
   },
 });
 

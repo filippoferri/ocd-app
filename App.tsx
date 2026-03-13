@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Modal, Platform } from 'react-native';
+import { StyleSheet, Text, View, Modal, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import TopNav from './components/TopNav';
@@ -14,22 +14,23 @@ import OCDTestScreen from './screens/OCDTestScreen';
 import ActivationFlow from './screens/ActivationFlow/ActivationFlow';
 import AuthFlow from './screens/AuthFlow/AuthFlow';
 import OnboardingFlow, { OnboardingData } from './screens/OnboardingFlow/OnboardingFlow';
-import AuthService, { User, UserActivity } from './services/AuthService';
+import AuthService, { User } from './services/AuthService';
+import { UserActivity, ActivationEntry } from './types/Activity';
 import MoodFlow from './components/MoodFlow';
 import { Exercise } from './types/Exercise';
-import { initializeExerciseService } from './config/exerciseConfig';
 
-interface ActivationEntry {
-  id: string;
-  date: string;
-  time: string;
-  type: 'ossessione' | 'compulsione';
-  symptom: string;
-  intensity: string;
-  description: string;
-}
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-export default function App() {
+
+
+function MainApp() {
+  const { 
+    currentUser, userActivities, isLoading, testCompleted, testResult, 
+    currentMood, onboardingCompleted, handleAuthSuccess, handleLogout, 
+    refreshActivities, setTestCompleted, setTestResult, setCurrentMood,
+    setOnboardingCompleted, handleOnboardingComplete, handleResetOnboarding
+  } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<'home' | 'explore'>('home');
   const [currentScreen, setCurrentScreen] = useState<'home' | 'diary' | 'OCDTest'>('home');
   const [showActivationFlow, setShowActivationFlow] = useState(false);
@@ -37,20 +38,24 @@ export default function App() {
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<ActivationEntry | null>(null);
   const [diaryRefreshKey, setDiaryRefreshKey] = useState(0);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [testCompleted, setTestCompleted] = useState(false);
-  const [testResult, setTestResult] = useState<number | null>(null);
-  const [currentMood, setCurrentMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
   const [showMoodFlow, setShowMoodFlow] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
+  // Show Onboarding if not completed and authenticated
+  useEffect(() => {
+    if (currentUser && !isLoading && !onboardingCompleted) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [currentUser, isLoading, onboardingCompleted]);
+
+
   const handleHomePress = () => {
     setActiveTab('home');
+    setCurrentScreen('home');
   };
 
   const handleExplorePress = () => {
@@ -71,10 +76,8 @@ export default function App() {
     setCurrentScreen('diary');
     // Forza il refresh del diario incrementando la key
     setDiaryRefreshKey(prev => prev + 1);
-    // Ricarica le attività
     try {
-      const activities = await AuthService.getUserActivities();
-      setUserActivities(activities);
+      await refreshActivities();
     } catch (error) {
       console.error('Errore nel caricamento attività:', error);
     }
@@ -98,32 +101,8 @@ export default function App() {
     setShowProfile(false);
   };
 
-  const handleAuthSuccess = async (user: User) => {
-    setCurrentUser(user);
-    try {
-      const activities = await AuthService.getUserActivities();
-      setUserActivities(activities);
-      // Controlla se l'utente ha completato l'onboarding
-      const hasCompletedOnboarding = await AuthService.hasCompletedOnboarding();
-      if (!hasCompletedOnboarding) {
-        setShowOnboarding(true);
-        setOnboardingCompleted(false);
-      } else {
-        setOnboardingCompleted(true);
-        // Carica i dati dell'onboarding per impostare il mood
-        const onboardingData = await AuthService.getOnboardingData();
-        if (onboardingData) {
-          setCurrentMood(onboardingData.currentMood);
-        }
-      }
-    } catch (error) {
-      console.error('Errore nel caricamento attività:', error);
-    }
-  };
-
-  const handleLogout = async () => {
-    await AuthService.logout();
-    setCurrentUser(null);
+  const handleLocalLogout = async () => {
+    await handleLogout();
     setShowProfile(false);
     setCurrentScreen('home');
     setActiveTab('home');
@@ -142,14 +121,11 @@ export default function App() {
   const handleSaveActivity = async (description: string) => {
     if (selectedActivity) {
       try {
-        const updatedActivity = { ...selectedActivity, description };
-        await AuthService.updateActivity(selectedActivity.id, updatedActivity);
+        await AuthService.updateActivity(selectedActivity.id, { description });
         setDiaryRefreshKey(prev => prev + 1);
         setShowActivityDetail(false);
         setSelectedActivity(null);
-        // Ricarica le attività
-        const activities = await AuthService.getUserActivities();
-        setUserActivities(activities);
+        await refreshActivities();
       } catch (error) {
         console.error('Error updating activity:', error);
       }
@@ -163,9 +139,7 @@ export default function App() {
         setDiaryRefreshKey(prev => prev + 1);
         setShowActivityDetail(false);
         setSelectedActivity(null);
-        // Ricarica le attività
-        const activities = await AuthService.getUserActivities();
-        setUserActivities(activities);
+        await refreshActivities();
       } catch (error) {
         console.error('Error deleting activity:', error);
       }
@@ -185,32 +159,17 @@ export default function App() {
     setShowMoodFlow(false);
   };
 
-  const handleOnboardingComplete = async (onboardingData: OnboardingData) => {
-    try {
-      // Salva i dati dell'onboarding
-      await AuthService.saveOnboardingData(onboardingData);
-      // Imposta il mood iniziale
-      setCurrentMood(onboardingData.currentMood);
-      // Se l'utente vuole fare il test DOC, naviga al test
-      if (onboardingData.wantsOCDTest) {
-        setCurrentScreen('OCDTest');
-      }
-      setShowOnboarding(false);
-      setOnboardingCompleted(true);
-    } catch (error) {
-      console.error('Errore nel salvataggio dati onboarding:', error);
+  const handleLocalOnboardingComplete = async (onboardingData: OnboardingData) => {
+    await handleOnboardingComplete(onboardingData);
+    if (onboardingData.wantsOCDTest) {
+      setCurrentScreen('OCDTest');
     }
   };
 
-  const handleResetOnboarding = async () => {
-    try {
-      await AuthService.resetOnboarding();
-      setOnboardingCompleted(false);
-      setShowProfile(false);
-      setShowOnboarding(true);
-    } catch (error) {
-      console.error('Errore nel reset onboarding:', error);
-    }
+  const handleLocalResetOnboarding = async () => {
+    await handleResetOnboarding();
+    setShowProfile(false);
+    setShowOnboarding(true);
   };
 
   const handleExercisePress = (exercise: Exercise) => {
@@ -232,55 +191,11 @@ export default function App() {
   const handleNavigateToDiary = async () => {
     setShowExerciseDetail(false);
     setSelectedExercise(null);
-    // Aggiorna le attività utente per includere l'esercizio appena completato
-    try {
-      const activities = await AuthService.getUserActivities();
-      setUserActivities(activities);
-    } catch (error) {
-      console.error('Errore nel caricamento attività:', error);
-    }
-    // Naviga al tab Home e poi al DiaryScreen
+    await refreshActivities();
     setActiveTab('home');
     setCurrentScreen('diary');
-    // Forza il refresh del DiaryScreen
     setDiaryRefreshKey(prev => prev + 1);
   };
-
-  // Verifica se l'utente è già autenticato all'avvio
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        // Inizializza il servizio esercizi
-        initializeExerciseService();
-        
-        const user = await AuthService.getCurrentUser();
-        setCurrentUser(user);
-        if (user) {
-          const activities = await AuthService.getUserActivities();
-          setUserActivities(activities);
-          // Controlla se l'utente ha completato l'onboarding
-          const hasCompletedOnboarding = await AuthService.hasCompletedOnboarding();
-          if (!hasCompletedOnboarding) {
-            setShowOnboarding(true);
-            setOnboardingCompleted(false);
-          } else {
-            setOnboardingCompleted(true);
-            // Carica i dati dell'onboarding per impostare il mood
-            const onboardingData = await AuthService.getOnboardingData();
-            if (onboardingData) {
-              setCurrentMood(onboardingData.currentMood);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Errore nel controllo autenticazione:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
 
   // Mostra AuthFlow se l'utente non è autenticato
   if (!currentUser && !isLoading) {
@@ -297,7 +212,21 @@ export default function App() {
       <SafeAreaProvider>
         <View style={[styles.container, styles.loadingContainer]}>
           <StatusBar style="dark" />
-          <Text style={styles.loadingText}>Caricamento...</Text>
+          <ActivityIndicator size="large" color="#8B7CF6" />
+          <Text style={[styles.loadingText, { marginTop: 20 }]}>Caricamento...</Text>
+          
+          <TouchableOpacity 
+            onPress={() => {
+              console.warn('Bypass manuale del caricamento');
+              // Questo forzerà l'unblock via AuthContext
+              handleLogout(); 
+            }}
+            style={{ marginTop: 40, padding: 10 }}
+          >
+            <Text style={{ color: '#8B7CF6', fontSize: 14, textDecorationLine: 'underline' }}>
+              Problemi nel caricamento? Clicca qui
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaProvider>
     );
@@ -322,13 +251,14 @@ export default function App() {
       <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? 115 : 0 }]}>
         {currentScreen === 'home' && activeTab === 'home' && (
           <HomePage 
-                userName={currentUser?.name}
-                setCurrentScreen={setCurrentScreen}
-                testCompleted={testCompleted}
-                currentMood={currentMood}
-                onMoodPress={handleMoodPress}
-                onExercisePress={handleExercisePress}
-              />
+            userName={currentUser?.name}
+            setCurrentScreen={setCurrentScreen}
+            testCompleted={testCompleted}
+            currentMood={currentMood}
+            onMoodPress={handleMoodPress}
+            onExercisePress={handleExercisePress}
+            userActivities={userActivities}
+          />
         )}
         {currentScreen === 'home' && activeTab === 'explore' && (
           <ExploreScreen onExercisePress={handleExercisePress} />
@@ -357,9 +287,9 @@ export default function App() {
         {currentScreen === 'OCDTest' && (
           <OCDTestScreen 
             onBack={() => setCurrentScreen('home')}
-            onTestComplete={async (score: number) => {
+            onTestComplete={async (evaluation: string) => {
               setTestCompleted(true);
-              setTestResult(score);
+              setTestResult(evaluation);
               
               // Salva il completamento del test come attività
               const now = new Date();
@@ -367,17 +297,16 @@ export default function App() {
                 id: `test_${Date.now()}`,
                 date: now.toISOString().split('T')[0],
                 time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                type: 'ossessione' as const,
+                type: 'test' as const,
                 symptom: 'Test DOC',
                 intensity: 'completato',
-                description: `Test DOC completato. Punteggio: ${score}%`,
+                description: `Test DOC completato. Valutazione intensità: ${evaluation}`,
               };
               
               try {
                 await AuthService.addActivity(activity);
                 // Aggiorna la lista delle attività
-                const updatedActivities = await AuthService.getUserActivities();
-                setUserActivities(updatedActivities);
+                await refreshActivities();
               } catch (error) {
                 console.error('Errore nel salvare il completamento del test:', error);
               }
@@ -463,7 +392,7 @@ export default function App() {
         animationType="slide"
         presentationStyle="fullScreen"
       >
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
+        <OnboardingFlow onComplete={handleLocalOnboardingComplete} />
       </Modal>
 
       <Modal
@@ -486,6 +415,14 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -504,7 +441,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    elevation: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   bottomNavContainer: {
     position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
@@ -515,7 +453,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
     zIndex: 1000,
-    elevation: 10,
   },
   loadingContainer: {
     justifyContent: 'center',

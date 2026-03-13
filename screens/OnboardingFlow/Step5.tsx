@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
@@ -20,7 +20,11 @@ export default function Step5({ onNext, onBack }: Step5Props) {
   const isValidAge = age.trim() && parseInt(age) > 0 && parseInt(age) < 120;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -28,37 +32,44 @@ export default function Step5({ onNext, onBack }: Step5Props) {
         <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>La tua età</Text>
-        
-        <View style={styles.imageContainer}>
-          <Image 
-            source={require('../../assets/onboarding/onboarding-5.png')} 
-            style={styles.image}
-            resizeMode="contain"
-          />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>La tua età</Text>
+          
+          <View style={styles.imageContainer}>
+            <Image 
+              source={require('../../assets/onboarding/onboarding-5.png')} 
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.helperText}>Inserisci la tua età</Text>
+            <TextInput
+              style={styles.input}
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+              maxLength={3}
+              textAlign="center"
+            />
+          </View>
         </View>
-        
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={age}
-            onChangeText={setAge}
-            placeholder="Inserisci la tua età"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-            maxLength={3}
-            textAlign="center"
-          />
-        </View>
-      </View>
+      </ScrollView>
 
-      <ButtonNav 
-        label="CONTINUA" 
-        onPress={handleContinue}
-        disabled={!isValidAge}
-      />
-    </View>
+      <View style={styles.buttonContainer}>
+        <ButtonNav 
+          label="CONTINUA" 
+          onPress={handleContinue}
+          disabled={!isValidAge}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -85,11 +96,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
+    minHeight: 400,
+  },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    backgroundColor: '#F8F9FA',
   },
   title: {
     fontSize: 28,
@@ -97,6 +118,8 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginBottom: 40,
+    minHeight: 80,
+    textAlignVertical: 'center',
   },
   imageContainer: {
     width: 200,
@@ -111,20 +134,27 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 200,
     alignItems: 'center',
+    marginBottom: 30,
   },
   input: {
     backgroundColor: 'white',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 18,
-    fontWeight: '600',
+    width: 80,
+    height: 80,
+    fontSize: 24,
+    fontWeight: 'bold',
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    color: '#333',
+    textAlign: 'center',
+    padding: 0,
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 24,
+    paddingHorizontal: 10,
+    textAlign: 'center',
   },
 });

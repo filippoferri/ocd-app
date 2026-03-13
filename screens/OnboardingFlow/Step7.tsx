@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
+import Select from '../../components/Select';
 
 interface Step7Props {
   onNext: (fragilityDuration: string) => void;
@@ -9,9 +10,9 @@ interface Step7Props {
 }
 
 const durationOptions = [
-  'Da pochi mesi',
-  'Da un anno',
-  'Da anni'
+  { label: 'Da pochi mesi', value: 'Da pochi mesi' },
+  { label: 'Da un anno', value: 'Da un anno' },
+  { label: 'Da anni', value: 'Da anni' },
 ];
 
 export default function Step7({ onNext, onBack }: Step7Props) {
@@ -43,23 +44,11 @@ export default function Step7({ onNext, onBack }: Step7Props) {
           />
         </View>
         
-        <View style={styles.optionsContainer}>
-          {durationOptions.map((option) => (
-            <TouchableOpacity 
-              key={option}
-              style={[
-                styles.optionButton,
-                selectedDuration === option && styles.optionButtonSelected
-              ]}
-              onPress={() => setSelectedDuration(option)}
-            >
-              <Text style={[
-                styles.optionText,
-                selectedDuration === option && styles.optionTextSelected
-              ]}>{option}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Select 
+          options={durationOptions}
+          selectedValue={selectedDuration}
+          onSelect={setSelectedDuration}
+        />
       </View>
 
       <ButtonNav 
@@ -97,8 +86,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
   },
   title: {
     fontSize: 24,
@@ -107,6 +96,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 40,
     lineHeight: 30,
+    minHeight: 80,
+    textAlignVertical: 'center',
   },
   imageContainer: {
     width: 200,
@@ -116,35 +107,5 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-  },
-  optionsContainer: {
-    width: '100%',
-    gap: 16,
-  },
-  optionButton: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  optionButtonSelected: {
-    borderColor: '#8B7CF6',
-    backgroundColor: '#F3F4F6',
-  },
-  optionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    textAlign: 'center',
-  },
-  optionTextSelected: {
-    color: '#8B7CF6',
   },
 });

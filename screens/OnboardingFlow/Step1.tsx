@@ -16,23 +16,22 @@ export default function Step1({ onNext }: Step1Props) {
       </View>
 
       <View style={styles.content}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>Sei nel posto</Text>
+          <Text style={styles.titleHighlight}>giusto</Text>
+          
+          <Text style={styles.subtitle}>
+            Ti aiuteremo a costruire un futuro migliore da vivere,{"\n"}
+            preparandoti a migliorare giorno dopo giorno.
+          </Text>
+        </View>
+
         <View style={styles.imageContainer}>
           <Image 
             source={require('../../assets/onboarding/onboarding-1.png')} 
             style={styles.image}
             resizeMode="contain"
           />
-        </View>
-        
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>Sei nel</Text>
-          <Text style={styles.title}>posto</Text>
-          <Text style={styles.titleHighlight}>giusto</Text>
-          
-          <Text style={styles.subtitle}>
-            Costruire un per più da vivere, e{"\n"}
-            prepararti a migliorare giorno dopo giorno.
-          </Text>
         </View>
       </View>
 
@@ -43,6 +42,7 @@ export default function Step1({ onNext }: Step1Props) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -65,13 +65,13 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
   },
   imageContainer: {
     width: 200,
     height: 200,
-    marginBottom: 40,
+    marginTop: 60,
   },
   image: {
     width: '100%',

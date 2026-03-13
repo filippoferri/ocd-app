@@ -188,7 +188,7 @@ export default function Step4({ onFinish, activationData, onOpenExercise }: Step
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.diaryButton} onPress={onFinish}>
-          <Text style={styles.diaryButtonText}>DIARIO</Text>
+          <Text style={styles.diaryButtonText}>TORNA ALLA HOME</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -238,11 +238,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '100%',
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     marginBottom: 40,
   },
   cardImageContainer: {
@@ -300,7 +297,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   diaryButton: {
-    backgroundColor: '#FF9500',
+    backgroundColor: '#8B7CF6',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
