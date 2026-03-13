@@ -1,16 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { Exercise, ExerciseStep } from '../types/Exercise';
 
-// Configurazione Supabase dalle variabili d'ambiente
-// Supporta sia EXPO_PUBLIC_ (per Expo web) che REACT_APP_ (per React)
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL || 'https://pesercsmhpkrhvrrqlvr.supabase.co';
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlc2VyY3NtaHBrcmh2cnJxbHZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MTUxNjksImV4cCI6MjA2OTA5MTE2OX0.4WJaKP0nGLI2dCwxD3yO5unTWPm9s3UJsnX02ByX4_E';
+// Configurazione Supabase con valori hardcoded per compatibilità
+const supabaseUrl = 'https://pesercsmhpkrhvrrqlvr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlc2VyY3NtaHBrcmh2cnJxbHZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MTUxNjksImV4cCI6MjA2OTA5MTE2OX0.4WJaKP0nGLI2dCwxD3yO5unTWPm9s3UJsnX02ByX4_E';
 
-// Debug delle variabili d'ambiente
-console.log('Supabase Config Debug:', {
-  EXPO_PUBLIC_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  REACT_APP_URL: process.env.REACT_APP_SUPABASE_URL,
-  finalUrl: supabaseUrl,
+// Debug della configurazione
+console.log('Supabase Config:', {
+  url: supabaseUrl,
   hasKey: !!supabaseKey
 });
 

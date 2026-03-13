@@ -13,7 +13,7 @@ const EXERCISE_CONFIG = {
   // - 'local': usa solo dati locali
   // - 'supabase': usa solo Supabase
   // - 'hybrid': preferisce Supabase, fallback locale
-  dataSource: 'hybrid' as const,
+  dataSource: 'local' as const,
   
   // Abilita fallback automatico ai dati locali in caso di errore
   fallbackToLocal: true,

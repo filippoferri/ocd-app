@@ -78,6 +78,8 @@ const getExerciseImagePNG = (imagePath: string) => {
       return require('../assets/exercises/respirazione-consapevole.png');
     case 'scrittura':
       return require('../assets/exercises/scrittura.png');
+    case 'meditazione-guidata':
+      return require('../assets/exercises/meditazione-guidata.png');
     case 'success':
       return require('../assets/exercises/success.png');
     default:
@@ -87,6 +89,7 @@ const getExerciseImagePNG = (imagePath: string) => {
 
 export default function HomePage({ userName, setCurrentScreen, testCompleted, currentMood, onMoodPress, onExercisePress, userActivities }: HomePageProps) {
   const [dailyExercises, setDailyExercises] = React.useState<Exercise[]>([]);
+  const [availableExercises, setAvailableExercises] = React.useState<Exercise[]>([]);
 
   // Filtra gli esercizi completati oggi
   const displayedExercises = React.useMemo(() => {
@@ -106,11 +109,22 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
         // Carica i tre esercizi specifici richiesti
         const exercises = await ExerciseServiceAdapter.getDailyRecommendations();
         setDailyExercises(exercises);
+        
+        // Filtra gli esercizi non completati oggi
+        const notCompletedToday = [];
+        for (const exercise of exercises) {
+          const isCompleted = await ExerciseService.hasCompletedExerciseToday(exercise.id);
+          if (!isCompleted) {
+            notCompletedToday.push(exercise);
+          }
+        }
+        setAvailableExercises(notCompletedToday);
       } catch (error) {
         console.error('Errore nel caricamento esercizi:', error);
         // Fallback ai dati locali se necessario
         const localExercises = ExerciseService.getDailyRecommendations();
         setDailyExercises(localExercises);
+        setAvailableExercises(localExercises);
       }
     };
     
@@ -143,39 +157,46 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
       <View style={styles.exercisesSection}>
         <Text style={styles.sectionTitle}>Esercizi del giorno</Text>
         
-        {displayedExercises.length === 0 && testCompleted ? (
-          <View style={styles.emptyStateContainer}>
-            <Ionicons name="checkmark-circle-outline" size={48} color="#6BCF7F" />
-            <Text style={styles.emptyStateText}>Tutti gli esercizi completati!</Text>
-            <Text style={styles.emptyStateSubtext}>Ottimo lavoro oggi.</Text>
-          </View>
-        ) : (
+        {displayedExercises.length > 0 ? (
           displayedExercises.map((exercise, index) => {
-           return (
-             <TouchableOpacity 
-               key={exercise.id}
-               style={styles.exerciseCard}
-               onPress={() => onExercisePress(exercise)}
-             >
-               <View style={styles.exerciseImageContainer}>
-                 <Image 
-                   source={getExerciseImagePNG(exercise.image)}
-                   style={styles.exerciseCardImage}
-                   resizeMode="cover"
-                 />
-               </View>
-               <View style={styles.exerciseContent}>
-                 <Text style={styles.exerciseTitle}>{exercise.name}</Text>
-                 <Text style={styles.exerciseDescription}>{exercise.objectiveText}</Text>
-                 <View style={styles.exerciseTime}>
-                   <Ionicons name="time" size={16} color="#666" />
-                   <Text style={styles.timeText}>{exercise.duration} min</Text>
+             return (
+               <TouchableOpacity 
+                 key={exercise.id}
+                 style={styles.exerciseCard}
+                 onPress={() => onExercisePress(exercise)}
+               >
+                 <View style={styles.exerciseImageContainer}>
+                   <Image 
+                     source={getExerciseImagePNG(exercise.image)}
+                     style={styles.exerciseCardImage}
+                     resizeMode="cover"
+                   />
                  </View>
-               </View>
-             </TouchableOpacity>
-           );
-         })
-        )}
+                 <View style={styles.exerciseContent}>
+                   <Text style={styles.exerciseTitle}>{exercise.name}</Text>
+                   <Text style={styles.exerciseDescription}>{exercise.objectiveText}</Text>
+                   <View style={styles.exerciseTime}>
+                     <Ionicons name="time" size={16} color="#666" />
+                     <Text style={styles.timeText}>{exercise.duration} min</Text>
+                   </View>
+                 </View>
+               </TouchableOpacity>
+             );
+           })
+        ) : testCompleted ? (
+          <View style={styles.completionCard}>
+            <View style={styles.completionIcon}>
+              <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
+            </View>
+            <Text style={styles.completionTitle}>🎉 Fantastico!</Text>
+            <Text style={styles.completionMessage}>
+              Hai completato tutti gli esercizi di oggi. La costanza è la chiave del successo!
+            </Text>
+            <Text style={styles.completionSubMessage}>
+              Torna domani per nuove sfide e continua il tuo percorso di crescita.
+            </Text>
+          </View>
+        ) : null}
 
         {!testCompleted && (
           <TouchableOpacity 
@@ -345,25 +366,42 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 4,
   },
-  emptyStateContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
+  completionCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    marginBottom: 20,
+    padding: 24,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  emptyStateText: {
-    fontSize: 18,
+  completionIcon: {
+    marginBottom: 16,
+  },
+  completionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 10,
+    marginBottom: 12,
     textAlign: 'center',
   },
-  emptyStateSubtext: {
-    fontSize: 14,
+  completionMessage: {
+    fontSize: 16,
     color: '#666',
-    marginTop: 5,
     textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  completionSubMessage: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

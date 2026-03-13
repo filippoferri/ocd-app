@@ -197,6 +197,7 @@ function MainApp() {
     setDiaryRefreshKey(prev => prev + 1);
   };
 
+
   // Mostra AuthFlow se l'utente non è autenticato
   if (!currentUser && !isLoading) {
     return (
