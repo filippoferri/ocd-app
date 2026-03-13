@@ -1,17 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Exercise, ExerciseStep } from '../types/Exercise';
 
-// Configurazione Supabase con valori hardcoded per compatibilità
-const supabaseUrl = 'https://pesercsmhpkrhvrrqlvr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlc2VyY3NtaHBrcmh2cnJxbHZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MTUxNjksImV4cCI6MjA2OTA5MTE2OX0.4WJaKP0nGLI2dCwxD3yO5unTWPm9s3UJsnX02ByX4_E';
-
-// Debug della configurazione
-console.log('Supabase Config:', {
-  url: supabaseUrl,
-  hasKey: !!supabaseKey
-});
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../lib/supabase';
 
 // Interfaccia per gli esercizi nel database
 interface SupabaseExercise {
