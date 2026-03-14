@@ -6,16 +6,14 @@ import { UserActivity } from '../types/Activity';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 import ExerciseService from '../services/ExerciseService';
 
-const ConcentricCirclesBackground = () => (
-  <Svg width={180} height={180} viewBox="0 0 180 180" fill="none">
-    <Circle cx="90" cy="90" r="90" fill="#A495F6" />
-    <Circle cx="90" cy="90" r="75" fill="#B3A6F8" />
-    <Circle cx="90" cy="90" r="60" fill="#C2B7FA" />
-    {/* Small decorative dashes */}
-    <Path d="M90 10 A80 80 0 0 1 120 16" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-    <Path d="M22 135 A80 80 0 0 1 13 105" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-    <Path d="M165 65 A80 80 0 0 1 155 125" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-    <Path d="M125 160 A80 80 0 0 1 85 168" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+const CircleSvg = () => (
+  <Svg width={180} height={180} viewBox="0 0 247 241" fill="none">
+    <G>
+      <Path d="M61.5553 16.9655C0.771564 53.7427 -22.3446 144.259 26.102 200.707C63.0845 243.962 124.115 252.047 176.209 226.596C275.889 177.896 272.183 25.9196 152.86 2.47987C121.38 -3.7051 85.8139 1.88324 61.5553 16.9655Z" fill="#B8B8FF"/>
+      <Path d="M50.7825 55.7889C2.03544 108.508 20.081 200.549 97.55 214.45C158.266 225.345 214.117 182.561 222.073 129.559C224.24 96.9257 212.999 62.8075 185.088 41.7564C164.835 26.4883 138.883 20.8274 116.975 22.9955C90.814 25.5817 68.3731 36.1119 50.7825 55.7889Z" fill="#9381FF"/>
+      <Path d="M30.8078 116.934H30.7914C30.6681 116.932 30.5459 116.905 30.4328 116.857C30.3195 116.807 30.2168 116.736 30.1312 116.647C30.0453 116.559 29.978 116.454 29.9325 116.339C29.8873 116.224 29.8652 116.101 29.8673 115.978C30.0521 105.561 32.9133 95.368 38.1748 86.381C38.2372 86.2746 38.3197 86.1816 38.4182 86.1072C38.5165 86.0327 38.6284 85.9784 38.7475 85.9472C38.8669 85.9162 38.991 85.9089 39.1132 85.9261C39.2351 85.943 39.3526 85.9838 39.4589 86.0463C39.5651 86.1088 39.658 86.1915 39.7324 86.2899C39.8067 86.3883 39.8609 86.5006 39.8919 86.6199C39.9231 86.7395 39.9303 86.8637 39.9132 86.9859C39.8963 87.1083 39.8555 87.2259 39.7324 87.3324C34.6951 96.0389 31.9231 105.914 31.7437 116.006C31.7406 116.252 31.6407 116.488 31.4655 116.662C31.2905 116.835 31.0541 116.933 30.8078 116.934Z" fill="white"/>
+      <Path d="M30.4583 134.015C30.2538 134.015 30.0547 133.948 29.8917 133.824C29.7286 133.7 29.6104 133.526 29.5553 133.329C28.8737 130.872 28.8566 128.278 29.5061 125.813C29.5757 125.58 29.7326 125.383 29.944 125.264C30.155 125.144 30.4046 125.112 30.6394 125.173C30.8744 125.233 31.0768 125.383 31.2039 125.59C31.331 125.797 31.373 126.045 31.3214 126.283C30.7534 128.427 30.7679 130.685 31.3636 132.822C31.4023 132.962 31.4082 133.108 31.381 133.251C31.3535 133.393 31.2937 133.527 31.206 133.643C31.1183 133.758 31.0053 133.851 30.8756 133.915C30.7459 133.98 30.603 134.013 30.4583 134.013V134.015Z" fill="white"/>
+    </G>
   </Svg>
 );
 
@@ -152,7 +150,7 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
         <TouchableOpacity style={styles.progressContainer} onPress={onMoodPress}>
           <View style={styles.moodContainer}>
             <View style={styles.circleBackgroundWrapper}>
-              <ConcentricCirclesBackground />
+              <CircleSvg />
             </View>
             <View style={styles.moodIconBackground}>
               {/* Uses FacePurpleSmile based on the screenshot, or custom state faces */}
@@ -277,11 +275,11 @@ const styles = StyleSheet.create({
   },
   circleBackgroundWrapper: {
     position: 'absolute',
-    right: -20, // push it slightly off-screen like in screenshot
+    right: 10, 
   },
   moodIconBackground: {
     position: 'absolute',
-    right: 27, // Positioned nicely over the inner white center of the SVG rings
+    right: 60, // Adjusted to center better with the new SVG blobs
     width: 80,
     height: 80,
     borderRadius: 40,
