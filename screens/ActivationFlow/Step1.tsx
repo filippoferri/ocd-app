@@ -56,7 +56,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
   const handleAddCustomSymptom = () => {
     if (newSymptomText.trim()) {
       const newSymptom = {
-        id: `custom-${Date.now()}`,
+        id: `custom-${newSymptomText.trim()}`,
         label: newSymptomText.trim(),
         icon: 'add-circle'
       };

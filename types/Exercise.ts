@@ -16,6 +16,7 @@ export interface Exercise {
   objectiveText: string; // Obiettivo (molto corto)
   duration: number; // in minuti
   image: string; // path dell'immagine square
+  audioUrl?: string; // URL dell'audio su Supabase Storage
   steps: ExerciseStep[];
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';

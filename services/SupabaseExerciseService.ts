@@ -1,5 +1,5 @@
 import { Exercise, ExerciseProgress } from '../types/Exercise';
-import { supabase } from './SupabaseService';
+import { supabase } from '../lib/supabase';
 
 // Interfaccia per i dati grezzi di Supabase
 interface SupabaseExerciseData {
@@ -10,6 +10,7 @@ interface SupabaseExerciseData {
   objective_text: string;
   duration: number;
   image: string;
+  audio_guide?: string;
   
   steps: any;
   category?: string;
@@ -179,7 +180,7 @@ class SupabaseExerciseService {
         return [];
       }
 
-      return (data || []).map(item => ({
+      return (data || []).map((item: any) => ({
         exerciseId: item.exercise_id,
         userId: item.user_id,
         completedAt: new Date(item.completed_at),
@@ -244,6 +245,7 @@ class SupabaseExerciseService {
       if (updates.objectiveText) updateData.objective_text = updates.objectiveText;
       if (updates.duration) updateData.duration = updates.duration;
       if (updates.image) updateData.image = updates.image;
+      if (updates.audioUrl) updateData.audio_guide = updates.audioUrl;
       
       if (updates.steps) updateData.steps = updates.steps;
       if (updates.category) updateData.category = updates.category;
@@ -302,6 +304,7 @@ class SupabaseExerciseService {
       objectiveText: item.objective_text,
       duration: item.duration,
       image: item.image,
+      audioUrl: item.audio_guide,
       
       steps: item.steps || [],
       category: item.category,

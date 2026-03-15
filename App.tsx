@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Modal, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, Modal, Platform, ActivityIndicator, TouchableOpacity, Animated, Dimensions, Easing } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import TopNav from './components/TopNav';
@@ -18,8 +18,9 @@ import AuthService, { User } from './services/AuthService';
 import { UserActivity, ActivationEntry } from './types/Activity';
 import MoodFlow from './components/MoodFlow';
 import { Exercise } from './types/Exercise';
-
+import DailyExerciseService from './services/DailyExerciseService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import HorizontalSlideModal from './components/HorizontalSlideModal';
 
 
 
@@ -42,6 +43,21 @@ function MainApp() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [homeRefreshKey, setHomeRefreshKey] = useState(0);
+
+  // Background animation for parallax effect
+  const { width } = Dimensions.get('window');
+  const backgroundSlideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const shouldSlide = showActivityDetail || showActivationFlow || showExerciseDetail;
+    Animated.timing(backgroundSlideAnim, {
+      toValue: shouldSlide ? -width * 0.15 : 0, // Shifting 15% to the left
+      duration: shouldSlide ? 350 : 300,
+      easing: shouldSlide ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
+      useNativeDriver: true,
+    }).start();
+  }, [showActivityDetail, showActivationFlow, showExerciseDetail]);
 
   // Show Onboarding if not completed and authenticated
   useEffect(() => {
@@ -182,10 +198,16 @@ function MainApp() {
     setSelectedExercise(null);
   };
 
-  const handleExerciseComplete = () => {
+  const handleExerciseComplete = async () => {
+    if (selectedExercise) {
+      const today = new Date();
+      const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      await DailyExerciseService.markExerciseCompleted(selectedExercise.id, localToday);
+    }
     setShowExerciseDetail(false);
     setSelectedExercise(null);
-    // Potresti voler aggiungere qui logica per aggiornare statistiche o mostrare congratulazioni
+    setHomeRefreshKey(prev => prev + 1);
+    await refreshActivities();
   };
 
   const handleNavigateToDiary = async () => {
@@ -236,182 +258,182 @@ function MainApp() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <StatusBar style="dark" />
-      
-      <View style={styles.topNavContainer}>
-        {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
-          <TopNav 
-            currentScreen={currentScreen}
-            onToggle={handleToggleScreen}
-            onAvatarPress={handleAvatarPress}
-            userName={currentUser?.name}
+        <Animated.View style={[styles.mainWrapper, { transform: [{ translateX: backgroundSlideAnim }] }]}>
+          <StatusBar style="dark" />
+        
+          <View style={styles.topNavContainer}>
+            {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
+              <TopNav 
+                currentScreen={currentScreen}
+                onToggle={handleToggleScreen}
+                onAvatarPress={handleAvatarPress}
+                userName={currentUser?.name}
+              />
+            )}
+          </View>
+          
+          <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? 115 : 0 }]}>
+            {currentScreen === 'home' && activeTab === 'home' && (
+              <HomePage
+                key={homeRefreshKey}
+                userName={currentUser?.name}
+                setCurrentScreen={setCurrentScreen}
+                testCompleted={testCompleted}
+                currentMood={currentMood}
+                onMoodPress={handleMoodPress}
+                onExercisePress={handleExercisePress}
+                userActivities={userActivities}
+              />
+            )}
+            {currentScreen === 'home' && activeTab === 'explore' && (
+              <ExploreScreen onExercisePress={handleExercisePress} />
+            )}
+            {currentScreen === 'diary' && (
+              <DiaryScreen 
+                key={diaryRefreshKey}
+                onClose={() => setCurrentScreen('home')}
+                onHomePress={handleHomePress}
+                onExplorePress={handleExplorePress}
+                onAddPress={handleAddPress}
+                onActivityPress={handleActivityPress}
+                activeTab={activeTab}
+                testCompleted={testCompleted}
+                testResult={testResult}
+                onRetakeTest={() => {
+                  setTestCompleted(false);
+                  setTestResult(null);
+                  setCurrentScreen('OCDTest');
+                }}
+                userActivities={userActivities}
+                onProfilePress={handleAvatarPress}
+              />
+            )}
+            
+            {currentScreen === 'OCDTest' && (
+              <OCDTestScreen 
+                onBack={() => setCurrentScreen('home')}
+                onTestComplete={async (evaluation: string) => {
+                  setTestCompleted(true);
+                  setTestResult(evaluation);
+                  
+                  // Salva il completamento del test come attività
+                  const now = new Date();
+                  const localNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                  const activity = {
+                    id: `test_${Date.now()}`,
+                    date: localNow,
+                    time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                    type: 'test' as const,
+                    symptom: 'Test DOC',
+                    intensity: 'completato',
+                    description: `Test DOC completato. Valutazione intensità: ${evaluation}`,
+                  };
+                  
+                  try {
+                    await AuthService.addActivity(activity);
+                    await refreshActivities();
+                  } catch (error) {
+                    console.error('Errore nel salvare il completamento del test:', error);
+                  }
+                  
+                  setCurrentScreen('home');
+                }}
+              />
+            )}
+          </View>
+
+          {(currentScreen === 'home' || currentScreen === 'diary') && (
+            <View style={styles.bottomNavContainer}>
+              <BottomNav 
+                activeTab={activeTab} 
+                onHomePress={handleHomePress}
+                onExplorePress={handleExplorePress}
+                onAddPress={handleAddPress}
+              />
+            </View>
+          )}
+        </Animated.View>
+
+        <HorizontalSlideModal
+          visible={showActivityDetail}
+          onClose={handleCloseActivityDetail}
+        >
+          {selectedActivity && (
+            <ActivityDetailScreen
+              activity={selectedActivity}
+              onBack={handleCloseActivityDetail}
+              onSave={handleSaveActivity}
+              onDelete={handleDeleteActivity}
+            />
+          )}
+        </HorizontalSlideModal>
+        
+        <HorizontalSlideModal
+          visible={showActivationFlow}
+          onClose={handleCloseActivationFlow}
+        >
+          <ActivationFlow 
+            onClose={handleCloseActivationFlow}
+            onComplete={handleCompleteActivationFlow}
+            onOpenExercise={(exercise) => {
+              setShowActivationFlow(false);
+              setSelectedExercise(exercise);
+              setShowExerciseDetail(true);
+            }}
           />
-        )}
-      </View>
-      
-      <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? 115 : 0 }]}>
-        {currentScreen === 'home' && activeTab === 'home' && (
-          <HomePage 
-            userName={currentUser?.name}
-            setCurrentScreen={setCurrentScreen}
-            testCompleted={testCompleted}
-            currentMood={currentMood}
-            onMoodPress={handleMoodPress}
-            onExercisePress={handleExercisePress}
+        </HorizontalSlideModal>
+
+        <Modal
+          visible={showProfile}
+          animationType="slide"
+          presentationStyle="fullScreen"
+        >
+          <ProfileScreen 
+            onClose={handleCloseProfile}
+            user={currentUser}
+            onLogout={handleLogout}
             userActivities={userActivities}
-          />
-        )}
-        {currentScreen === 'home' && activeTab === 'explore' && (
-          <ExploreScreen onExercisePress={handleExercisePress} />
-        )}
-        {currentScreen === 'diary' && (
-          <DiaryScreen 
-            key={diaryRefreshKey}
-            onClose={() => setCurrentScreen('home')}
-            onHomePress={handleHomePress}
-            onExplorePress={handleExplorePress}
-            onAddPress={handleAddPress}
-            onActivityPress={handleActivityPress}
-            activeTab={activeTab}
             testCompleted={testCompleted}
             testResult={testResult}
             onRetakeTest={() => {
               setTestCompleted(false);
               setTestResult(null);
+              setShowProfile(false);
               setCurrentScreen('OCDTest');
             }}
-            userActivities={userActivities}
-            onProfilePress={handleAvatarPress}
+            onResetOnboarding={handleResetOnboarding}
           />
-        )}
-        
-        {currentScreen === 'OCDTest' && (
-          <OCDTestScreen 
-            onBack={() => setCurrentScreen('home')}
-            onTestComplete={async (evaluation: string) => {
-              setTestCompleted(true);
-              setTestResult(evaluation);
-              
-              // Salva il completamento del test come attività
-              const now = new Date();
-              const activity = {
-                id: `test_${Date.now()}`,
-                date: now.toISOString().split('T')[0],
-                time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                type: 'test' as const,
-                symptom: 'Test DOC',
-                intensity: 'completato',
-                description: `Test DOC completato. Valutazione intensità: ${evaluation}`,
-              };
-              
-              try {
-                await AuthService.addActivity(activity);
-                // Aggiorna la lista delle attività
-                await refreshActivities();
-              } catch (error) {
-                console.error('Errore nel salvare il completamento del test:', error);
-              }
-              
-              setCurrentScreen('home');
-            }}
-          />
-        )}
+        </Modal>
+
+        <MoodFlow
+          visible={showMoodFlow}
+          onClose={handleCloseMoodFlow}
+          onSave={handleSaveMood}
+        />
+
+        <Modal
+          visible={showOnboarding}
+          animationType="slide"
+          presentationStyle="fullScreen"
+        >
+          <OnboardingFlow onComplete={handleLocalOnboardingComplete} />
+        </Modal>
+
+        <HorizontalSlideModal
+          visible={showExerciseDetail}
+          onClose={handleCloseExerciseDetail}
+        >
+          {selectedExercise && (
+             <ExerciseDetailScreen
+               exercise={selectedExercise}
+               onBack={handleCloseExerciseDetail}
+               onClose={handleCloseExerciseDetail}
+               onComplete={handleExerciseComplete}
+               onNavigateToDiary={handleNavigateToDiary}
+             />
+           )}
+        </HorizontalSlideModal>
       </View>
-      
-      {(currentScreen === 'home' || currentScreen === 'diary' || activeTab === 'explore') && (
-        <View style={styles.bottomNavContainer}>
-          <BottomNav 
-            activeTab={activeTab}
-            onHomePress={handleHomePress}
-            onExplorePress={handleExplorePress}
-            onAddPress={handleAddPress}
-          />
-        </View>
-      )}
-      
-      <Modal
-        visible={showActivityDetail}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        {selectedActivity && (
-          <ActivityDetailScreen
-            activity={selectedActivity}
-            onBack={handleCloseActivityDetail}
-            onSave={handleSaveActivity}
-            onDelete={handleDeleteActivity}
-          />
-        )}
-      </Modal>
-      
-      <Modal
-        visible={showActivationFlow}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <ActivationFlow 
-          onClose={handleCloseActivationFlow}
-          onComplete={handleCompleteActivationFlow}
-          onOpenExercise={(exercise) => {
-            setShowActivationFlow(false);
-            setSelectedExercise(exercise);
-            setShowExerciseDetail(true);
-          }}
-        />
-      </Modal>
-
-      <Modal
-        visible={showProfile}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <ProfileScreen 
-          onClose={handleCloseProfile}
-          user={currentUser}
-          onLogout={handleLogout}
-          userActivities={userActivities}
-          testCompleted={testCompleted}
-          testResult={testResult}
-          onRetakeTest={() => {
-            setTestCompleted(false);
-            setTestResult(null);
-            setShowProfile(false);
-            setCurrentScreen('OCDTest');
-          }}
-          onResetOnboarding={handleResetOnboarding}
-        />
-      </Modal>
-
-      <MoodFlow
-        visible={showMoodFlow}
-        onClose={handleCloseMoodFlow}
-        onSave={handleSaveMood}
-      />
-
-      <Modal
-        visible={showOnboarding}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <OnboardingFlow onComplete={handleLocalOnboardingComplete} />
-      </Modal>
-
-      <Modal
-        visible={showExerciseDetail}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        {selectedExercise && (
-           <ExerciseDetailScreen
-             exercise={selectedExercise}
-             onBack={handleCloseExerciseDetail}
-             onClose={handleCloseExerciseDetail}
-             onComplete={handleExerciseComplete}
-             onNavigateToDiary={handleNavigateToDiary}
-           />
-         )}
-      </Modal>
-    </View>
     </SafeAreaProvider>
   );
 }
@@ -429,6 +451,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  mainWrapper: {
+    flex: 1,
   },
   contentContainer: {
     flex: 1,

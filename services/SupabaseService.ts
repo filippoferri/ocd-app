@@ -81,6 +81,7 @@ class SupabaseExerciseService {
       objectiveText: supabaseExercise.objective_text,
       duration: supabaseExercise.duration,
       image: supabaseExercise.image,
+      audioUrl: supabaseExercise.audio_guide,
       steps: supabaseExercise.steps,
       category: supabaseExercise.category,
       difficulty: supabaseExercise.difficulty

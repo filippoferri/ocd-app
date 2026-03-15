@@ -93,10 +93,17 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
     });
   };
 
+  const getLocalDateString = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const getActivationsForDate = (date: Date) => {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = getLocalDateString(date);
     return activations
-      .filter(activation => activation.date === dateString)
+      .filter(activation => (activation.date?.split('T')[0] === dateString))
       .sort((a, b) => {
         // Converte il tempo da formato "H:MM AM/PM" o "HH:MM" a minuti per confronto corretto
         const convertTimeToMinutes = (timeStr: string) => {
@@ -210,11 +217,12 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
             </View>
             <Calendar
               onDayPress={(day: any) => {
-                setSelectedDate(new Date(day.timestamp));
+                // Usa la dateString per evitare sfasamenti tra UTC e locale
+                setSelectedDate(new Date(day.dateString + 'T12:00:00'));
                 setShowCalendar(false);
               }}
               markedDates={{
-                [selectedDate.toISOString().split('T')[0]]: {
+                [getLocalDateString(selectedDate)]: {
                   selected: true,
                   selectedColor: '#8B7CF6',
                 },
@@ -273,7 +281,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
                   { backgroundColor: intensityColors[selectedEntry.intensity] || '#666' }
                 ]}>
                   <Text style={styles.intensityText}>
-                    Intensità{"\n"}Molto Alta
+                    Intensità{"\n"}{selectedEntry.intensity === 'alta' ? 'Alta' : (intensityColors[selectedEntry.intensity] ? selectedEntry.intensity.charAt(0).toUpperCase() + selectedEntry.intensity.slice(1) : selectedEntry.intensity)}
                   </Text>
                 </View>
                 

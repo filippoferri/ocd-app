@@ -21,6 +21,7 @@ interface ActivityDetailScreenProps {
     description: string;
     time: string;
     duration?: string; // Per gli esercizi
+    date: string;
   };
   onBack: () => void;
   onSave: (description: string) => void;
@@ -86,7 +87,7 @@ const intensityTextColors: { [key: string]: string } = {
 const intensityLabels: { [key: string]: string } = {
   'bassa': 'Bassa',
   'media': 'Media',
-  'alta': 'Molto Alta',
+  'alta': 'Alta',
 };
 
 export default function ActivityDetailScreen({ 
@@ -130,87 +131,101 @@ export default function ActivityDetailScreen({
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <Text style={styles.time}>Ore {activity.time}</Text>
-        
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={24} color="#333" />
-        </TouchableOpacity>
+        <View style={styles.dragHandle} />
+        <View style={styles.headerTitleRow}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1a1a2e" />
+          </TouchableOpacity>
+          
+          <Text style={styles.headerTitle}>Attivazione</Text>
+          
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={24} color="#1a1a2e" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title */}
-        <Text style={styles.title}>
-          {isExercise ? (
-            activity.description.includes('Esercizio completato:') 
-              ? activity.description.match(/Esercizio completato: (.+?)(\.|$)/)?.[1] || 'Esercizio'
-              : 'Esercizio'
-          ) : (activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
-        </Text>
+        <View style={styles.card}>
+          <View>
+            {/* Title */}
+            <Text style={styles.title}>
+              {isExercise ? (
+                activity.description.includes('Esercizio completato:') 
+                  ? activity.description.match(/Esercizio completato: (.+?)(\.|$)/)?.[1] || 'Esercizio'
+                  : 'Esercizio'
+              ) : (activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
+            </Text>
 
-          {isExercise ? (
-          <View style={styles.exerciseContent}>
-            <TextInput
-              style={styles.descriptionInput}
-              value={description}
-              onChangeText={handleDescriptionChange}
-              placeholder="Aggiungi una descrizione..."
-              multiline
-              textAlignVertical="top"
-            />
+            <Text style={styles.dateSubtitle}>
+              {new Date(activity.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })} - {activity.time}
+            </Text>
+
+            {isExercise ? (
+              <View style={styles.exerciseContent}>
+                <TextInput
+                  style={styles.descriptionInput}
+                  value={description}
+                  onChangeText={handleDescriptionChange}
+                  placeholder="Aggiungi una descrizione..."
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+            ) : (
+              /* Regular Activity Content */
+              <>
+                {/* Symptom Pill */}
+                <View style={styles.symptomPill}>
+                  <Ionicons 
+                    name={getSymptomIcon(activity.symptom) as any} 
+                    size={16} 
+                    color="#1a1a2e" 
+                  />
+                  <Text style={styles.symptomText}>
+                    {symptomLabels[activity.symptom] || (activity.symptom.startsWith('custom-') ? activity.symptom.replace('custom-', '') : activity.symptom)}
+                  </Text>
+                </View>
+
+                {/* Description */}
+                <TextInput
+                  style={styles.descriptionInput}
+                  value={description}
+                  onChangeText={handleDescriptionChange}
+                  placeholder="Descrivi la tua esperienza..."
+                  multiline
+                  textAlignVertical="top"
+                />
+              </>
+            )}
           </View>
-        ) : (
-          /* Regular Activity Content */
-          <>
-            {/* Symptom Pill */}
-            <View style={styles.symptomPill}>
-              <Ionicons 
-                name={getSymptomIcon(activity.symptom) as any} 
-                size={16} 
-                color="#666" 
-              />
-              <Text style={styles.symptomText}>
-                {symptomLabels[activity.symptom] || activity.symptom}
-              </Text>
-            </View>
 
-            {/* Description */}
-            <TextInput
-              style={styles.descriptionInput}
-              value={description}
-              onChangeText={handleDescriptionChange}
-              placeholder="Descrivi la tua esperienza..."
-              multiline
-              textAlignVertical="top"
-            />
-
-            {/* Intensity Circle */}
+          {!isExercise && (
+            /* Intensity Section inside the card */
             <View style={styles.intensityContainer}>
               <View style={[
-                styles.intensityCircle,
-                { 
-                  backgroundColor: intensityColors[activity.intensity] || '#666',
-                  borderColor: intensityBorderColors[activity.intensity] || 'rgba(102, 102, 102, 0.5)',
-                  borderWidth: 10,
-                }
+                styles.intensityOuterRectangle,
+                { backgroundColor: activity.intensity === 'alta' ? '#fee2e2' : activity.intensity === 'media' ? '#fef3c7' : '#f3f4f6' }
               ]}>
-                <Text style={[
-                  styles.intensityLabel,
-                  { color: intensityTextColors[activity.intensity] || '#666' }
-                ]}>Intensità</Text>
-                <Text style={[
-                  styles.intensityValue,
-                  { color: intensityTextColors[activity.intensity] || '#666' }
+                <View style={[
+                  styles.intensityInnerRectangle,
+                  { backgroundColor: activity.intensity === 'alta' ? '#fecaca' : activity.intensity === 'media' ? '#fde68a' : '#e5e7eb' }
                 ]}>
-                  {intensityLabels[activity.intensity] || activity.intensity}
-                </Text>
+                  <Text style={[
+                    styles.intensityLabel,
+                    { color: intensityTextColors[activity.intensity] || '#666' }
+                  ]}>Intensità</Text>
+                  <Text style={[
+                    styles.intensityValue,
+                    { color: intensityTextColors[activity.intensity] || '#666' }
+                  ]}>
+                    {intensityLabels[activity.intensity] || activity.intensity}
+                  </Text>
+                </View>
               </View>
             </View>
-          </>
-        )}
+          )}
+        </View>
       </ScrollView>
 
       <ButtonNav 
@@ -259,78 +274,110 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f7ff',
   },
   header: {
+    backgroundColor: '#f1f0fa',
+    paddingTop: 15,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 3,
+    marginBottom: 20,
+  },
+  headerTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#f8f7ff',
+  },
+  headerTitle: {
+    fontSize: 18,
+    color: '#1a1a2e',
+    fontWeight: '600',
   },
   backButton: {
     padding: 5,
-  },
-  time: {
-    fontSize: 16,
-    color: '#999',
-    fontWeight: '500',
   },
   deleteButton: {
     padding: 5,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    backgroundColor: '#f1f0fa',
+    paddingHorizontal: 15,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 30,
+    padding: 25,
+    paddingBottom: 16, // User requested 16px from the bottom of the white card
+    minHeight: 600,
+    justifyContent: 'space-between', // Push intensity to the bottom if content is short
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
+    color: '#1a1a2e',
+    marginBottom: 8, // Title to Date: 8px
+  },
+  dateSubtitle: {
+    fontSize: 16,
+    color: '#a0a0b8',
+    marginBottom: 16, // Date to Pill: 16px
+    fontWeight: '500',
   },
   symptomPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#f5f5fa',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
     alignSelf: 'flex-start',
-    marginBottom: 30,
-    gap: 6,
+    marginBottom: 16, // Pill to Description: 16px
+    gap: 10,
   },
   symptomText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: '#1a1a2e',
     fontWeight: '500',
   },
   descriptionInput: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 24,
+    fontSize: 17,
+    color: '#1a1a2e',
+    lineHeight: 26,
     textAlign: 'left',
-    minHeight: 120,
-    marginBottom: 40,
+    minHeight: 150,
   },
   intensityContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginTop: 20,
   },
-  intensityCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  intensityOuterRectangle: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  },
+  intensityInnerRectangle: {
+    width: '100%',
+    paddingVertical: 35,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   intensityLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 4,
   },
   intensityValue: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   modalOverlay: {

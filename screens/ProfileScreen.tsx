@@ -28,25 +28,36 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     activity.description.includes('Esercizio completato:')
   ).length;
 
-  // Funzione per verificare se in una data è stato completato un esercizio
+  // Verifica se in una data (YYYY-MM-DD locale) è stato completato un esercizio
   const hasExerciseOnDate = (date: string) => {
-    return userActivities.some(activity => 
-      activity.date === date && activity.description.includes('Esercizio completato:')
-    );
+    return userActivities.some(activity => {
+      // Normalizza: prende solo la parte YYYY-MM-DD, sia ISO che locale
+      const activityDate = activity.date?.split('T')[0];
+      return activityDate === date && activity.description.includes('Esercizio completato:');
+    });
   };
 
-  // Genera le date per la settimana corrente
+  // Helper: data locale nel formato YYYY-MM-DD (rispetta il fuso orario del dispositivo)
+  const getLocalDateString = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Genera le date per la settimana corrente (lunedì → domenica)
   const getWeekDates = () => {
     const today = new Date();
     const currentDay = today.getDay(); // 0 = domenica, 1 = lunedì, etc.
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - currentDay + 1); // Inizia da lunedì
+    // Sposta a lunedì: se hoje è domenica (0) → -6, altrimenti -(currentDay - 1)
+    startOfWeek.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     
     const weekDates = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
-      weekDates.push(date.toISOString().split('T')[0]);
+      weekDates.push(getLocalDateString(date));
     }
     return weekDates;
   };
@@ -188,7 +199,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
           <View style={styles.exerciseCalendar}>
             {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day, index) => {
               const date = weekDates[index];
-              const dayNumber = new Date(date).getDate();
+              const dayNumber = parseInt(date.split('-')[2], 10);
               const hasExercise = hasExerciseOnDate(date);
               
               return (
