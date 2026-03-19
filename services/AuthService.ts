@@ -227,7 +227,7 @@ class AuthService {
       a.type === 'ossessione' || a.type === 'compulsione'
     ).length;
     const totalExercises = activities.filter(a =>
-      a.description.includes('Esercizio completato:')
+      a.id?.startsWith('exercise_') || a.description.includes('Esercizio completato')
     ).length;
 
     const weeklyActivities = activities.filter(a => {

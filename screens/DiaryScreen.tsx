@@ -393,12 +393,15 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
   };
 
   const isExerciseEntry = (activation: ActivationEntry) => {
-    return activation.description.includes('Esercizio completato:');
+    return activation.id?.startsWith('exercise_') || activation.description.includes('Esercizio completato');
   };
 
-  const getExerciseName = (description: string) => {
-    const match = description.match(/Esercizio completato: (.+?)(\.|$)/);
-    return match ? match[1] : 'Esercizio';
+  const getExerciseName = (activation: ActivationEntry) => {
+    if (activation.description.includes('Esercizio completato: ')) {
+      const match = activation.description.match(/Esercizio completato: (.+?)(\.|$)/);
+      if (match) return match[1];
+    }
+    return activation.symptom || 'Esercizio';
   };
 
   const getExerciseDuration = (description: string) => {
@@ -488,7 +491,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
                     </View>
                   )}
                   <Text style={styles.activationType}>
-                    {isExercise ? getExerciseName(activation.description) : (activation.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
+                    {isExercise ? getExerciseName(activation) : (activation.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
                   </Text>
                 </View>
               </View>

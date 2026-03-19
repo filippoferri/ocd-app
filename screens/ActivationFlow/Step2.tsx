@@ -14,14 +14,14 @@ interface Step2Props {
 type IntensityLevel = 'bassa' | 'media' | 'alta';
 
 const intensityColors: Record<IntensityLevel, string> = {
-  bassa: '#EFEFEF',   // Grigio
-  media: '#fcefc6',   // Giallo
-  alta: '#efb3aa',    // Rosso
+  bassa: '#fcefc6',
+  media: '#FBD49B',
+  alta: '#EFB3AA',
 };
 
 const intensityTextColors: Record<IntensityLevel, string> = {
-  bassa: '#656565',
-  media: '#E0A500',
+  bassa: '#E0A500',
+  media: '#EF9A43',
   alta: '#990809',
 };
 

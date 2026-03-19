@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Dimensions, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import * as Icons from 'phosphor-react-native';
+import { 
+  Plus,
+  PlusCircle,
+  X,
+  PencilSimple
+} from 'phosphor-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ButtonNav from '../../components/ButtonNav';
+
+const { width, height } = Dimensions.get('window');
 
 interface Step1Props {
   onNext: (data: { date: string; time: string; symptoms: string[] }) => void;
@@ -9,25 +18,47 @@ interface Step1Props {
   onBack?: () => void;
 }
 
-const symptoms = [
-  { id: 'contamination', label: 'Paura di contaminazioni', icon: 'medical' },
-  { id: 'harm', label: 'Azioni o pensieri lesivi', icon: 'warning' },
-  { id: 'control', label: 'Perdita di controllo', icon: 'flash' },
-  { id: 'sexuality', label: 'Pensieri legati alla sessualità', icon: 'heart' },
-  { id: 'order', label: 'Controllo e ordine', icon: 'grid' },
-  { id: 'detachment', label: 'Difficoltà a distaccarsi', icon: 'link' },
-  { id: 'error', label: 'Timore di errore', icon: 'alert-triangle' },
-  { id: 'superstition', label: 'Pensieri o azioni scaramantiche', icon: 'star' },
-  { id: 'invasion', label: 'Invasione mente da fattori esterni', icon: 'eye' },
-  { id: 'hypochondria', label: 'Ipocondria', icon: 'fitness' },
-  { id: 'rituals', label: 'Idee o azioni di rituali', icon: 'repeat' },
+const SYMPTOMS_STORAGE_KEY = 'custom_symptoms_list';
+
+// Helper to get icon component by name
+const getIcon = (name: string): React.FC<any> => {
+  return (Icons as any)[name] || PlusCircle;
+};
+
+const commonSymptoms = [
+  { id: 'contamination', label: 'Paura di contaminazioni', iconName: 'Virus' },
+  { id: 'harm', label: 'Azioni o pensieri lesivi', iconName: 'BoxingGlove' },
+  { id: 'control', label: 'Perdita di controllo', iconName: 'Sparkle' },
+  { id: 'sexuality', label: 'Pensieri legati alla sessualità', iconName: 'GenderIntersex' },
+  { id: 'order', label: 'Controllo e ordine', iconName: 'AlignLeft' },
+  { id: 'detachment', label: 'Difficoltà a distaccarsi', iconName: 'ArrowsInCardinal' },
+  { id: 'error', label: 'Timore di errore', iconName: 'Warning' },
+  { id: 'superstition', label: 'Pensieri o azioni scaramantiche', iconName: 'Pepper' },
+  { id: 'invasion', label: 'Invasione mente da fattori esterni', iconName: 'Brain' },
+  { id: 'hypochondria', label: 'Ipocondria', iconName: 'Pill' },
+  { id: 'rituals', label: 'Idee o azioni di rituali', iconName: 'Repeat' },
+];
+
+const AVAILABLE_ICONS = [
+  'Smiley', 'SmileySad', 'SmileyAngry', 'SmileyMeh', 'SmileyNervous',
+  'Brain', 'Heart', 'Pill', 'Stethoscope', 'Bandaids', 'FirstAid',
+  'Warning', 'Lightning', 'Bomb', 'Sparkle', 'CloudRain', 'Sun', 'Moon', 
+  'Fire', 'Lock', 'Shield', 'Key', 'Bell', 'SpeakerHigh', 'Eye', 'Ear', 
+  'Hand', 'Square', 'Star', 'Repeat', 'PlusCircle', 'Infinity',
+  'Atom', 'Cpu', 'Plugs', 'Globe', 'Compass', 'MapPin', 'Calendar',
+  'Clock', 'Camera', 'Microphone', 'Paperclip', 'PushPin', 'Trash',
+  'Briefcase', 'GraduationCap', 'Flask', 'Pizza', 'Coffee'
 ];
 
 export default function Step1({ onNext, onClose, onBack }: Step1Props) {
   const [selectedSymptom, setSelectedSymptom] = useState<string>('');
-  const [customSymptoms, setCustomSymptoms] = useState<Array<{id: string, label: string, icon: string}>>([]);
+  const [customSymptoms, setCustomSymptoms] = useState<Array<{id: string, label: string, iconName: string}>>([]);
   
-  // Get current date and time
+  // Ref to always have the latest state in async callbacks (prevents closure/stale issues)
+  const symptomsRef = React.useRef(customSymptoms);
+  React.useEffect(() => {
+    symptomsRef.current = customSymptoms;
+  }, [customSymptoms]);
   const now = new Date();
   const currentDay = now.getDate().toString();
   const currentMonth = now.toLocaleDateString('it-IT', { month: 'long' });
@@ -45,25 +76,126 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
   const [selectedHour, setSelectedHour] = useState(currentHour);
   const [selectedMinute, setSelectedMinute] = useState(currentMinute);
   
-  // Add symptom modal state
+  // Add/Edit symptom modal state
   const [showAddSymptomModal, setShowAddSymptomModal] = useState(false);
+  const [showIconGrid, setShowIconGrid] = useState(false);
   const [newSymptomText, setNewSymptomText] = useState('');
+  const [newSymptomIconName, setNewSymptomIconName] = useState('PlusCircle');
+  const [editingSymptomId, setEditingSymptomId] = useState<string | null>(null);
+
+  // Load custom symptoms from storage
+  useEffect(() => {
+    const loadCustomSymptoms = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SYMPTOMS_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setCustomSymptoms(parsed);
+        }
+      } catch (e) {
+        console.error('Error loading symptoms:', e);
+      }
+    };
+    loadCustomSymptoms();
+  }, []);
 
   const toggleSymptom = (id: string) => {
     setSelectedSymptom(selectedSymptom === id ? '' : id);
   };
 
-  const handleAddCustomSymptom = () => {
-    if (newSymptomText.trim()) {
-      const newSymptom = {
-        id: `custom-${newSymptomText.trim()}`,
-        label: newSymptomText.trim(),
-        icon: 'add-circle'
-      };
-      setCustomSymptoms([...customSymptoms, newSymptom]);
-      setNewSymptomText('');
-      setShowAddSymptomModal(false);
+  const handleOpenEditModal = (id: string) => {
+    const symptom = customSymptoms.find(s => s.id === id);
+    if (symptom) {
+      setNewSymptomText(symptom.label);
+      setNewSymptomIconName(symptom.iconName);
+      setEditingSymptomId(id);
+      setShowAddSymptomModal(true);
     }
+  };
+
+  const persistToStorage = async (list: any[]) => {
+    try {
+      await AsyncStorage.setItem(SYMPTOMS_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.error('Persistence failed:', e);
+    }
+  };
+
+  const handleSaveSymptom = async () => {
+    if (!newSymptomText.trim()) return;
+
+    const symptomData = {
+      label: newSymptomText.trim(),
+      iconName: newSymptomIconName
+    };
+
+    let nextList;
+    if (editingSymptomId) {
+      nextList = symptomsRef.current.map(s => 
+        s.id === editingSymptomId ? { ...s, ...symptomData } : s
+      );
+    } else {
+      const newId = `custom-${Date.now()}`;
+      const newSymptom = { id: newId, ...symptomData };
+      nextList = [newSymptom, ...symptomsRef.current];
+      setSelectedSymptom(newId);
+    }
+
+    // 1. Update State
+    setCustomSymptoms(nextList);
+    
+    // 2. Persist to Storage explicitly
+    await persistToStorage(nextList);
+    
+    // 3. Clear and close
+    closeModal();
+  };
+
+  const handleDeleteSymptom = () => {
+    const idToDelete = editingSymptomId;
+    if (!idToDelete) return;
+
+    const performDelete = async () => {
+      // Use the ref to get the absolute latest list before filtering
+      const nextList = symptomsRef.current.filter(s => s.id !== idToDelete);
+      
+      // 1. Update State
+      setCustomSymptoms(nextList);
+      
+      // 2. Update selection
+      if (selectedSymptom === idToDelete) {
+        setSelectedSymptom('');
+      }
+
+      // 3. Persist to Storage explicitly
+      await persistToStorage(nextList);
+      
+      // 4. Close modal
+      closeModal();
+    };
+
+    if (Platform.OS === 'web') {
+      // On Web, window.confirm is more reliable than Alert polyfills
+      if (window.confirm("Sei sicuro di voler eliminare questo sintomo?")) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Elimina Sintomo",
+        "Sei sicuro di voler eliminare questo sintomo?",
+        [
+          { text: "Annulla", style: "cancel" },
+          { text: "Elimina", style: "destructive", onPress: performDelete }
+        ]
+      );
+    }
+  };
+
+  const closeModal = () => {
+    setNewSymptomText('');
+    setNewSymptomIconName('PlusCircle');
+    setEditingSymptomId(null);
+    setShowAddSymptomModal(false);
   };
 
   const handleContinue = () => {
@@ -72,21 +204,18 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
     }
   };
 
-  // Combina sintomi predefiniti e personalizzati
-  const allSymptoms = [...symptoms, ...customSymptoms];
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.leftSection}>
           {onBack && (
             <TouchableOpacity onPress={onBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Plus size={24} color="#333" weight="bold" style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           )}
         </View>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#333" />
+          <Plus size={24} color="#333" weight="bold" style={{ transform: [{ rotate: '45deg' }] }} />
         </TouchableOpacity>
       </View>
 
@@ -102,44 +231,85 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.subtitle}>Quale sintomo si è proposto?</Text>
-
+        {/* I MIEI SINTOMI SECTION */}
+        <Text style={styles.sectionSubtitle}>I miei sintomi</Text>
         <View style={styles.symptomsGrid}>
-          {allSymptoms.map((symptom) => (
-            <TouchableOpacity
-              key={symptom.id}
-              style={[
-                styles.symptomCard,
-                selectedSymptom === symptom.id && styles.symptomCardSelected
-              ]}
-              onPress={() => toggleSymptom(symptom.id)}
-            >
-              <View style={styles.symptomIcon}>
-                <Ionicons 
-                  name={symptom.icon as any} 
-                  size={24} 
-                  color="#8B7CF6" 
-                />
-              </View>
-              <Text style={styles.symptomText}>{symptom.label}</Text>
-            </TouchableOpacity>
-          ))}
-          
-          {/* Pulsante Aggiungi */}
+          {/* Add Button as first item in My Symptoms */}
           <TouchableOpacity
             style={styles.addSymptomCard}
             onPress={() => setShowAddSymptomModal(true)}
           >
             <View style={styles.symptomIcon}>
-              <Ionicons 
-                name="add" 
-                size={24} 
-                color="#8B7CF6" 
+              <Plus 
+                size={32} 
+                color="#FF8C00" 
+                weight="bold"
               />
             </View>
-            <Text style={styles.symptomText}>Aggiungi</Text>
+            <Text style={[styles.symptomText, { color: '#FF8C00' }]}>Aggiungi</Text>
           </TouchableOpacity>
+
+          {customSymptoms.map((symptom) => {
+            const IconComponent = getIcon(symptom.iconName);
+            return (
+              <TouchableOpacity
+                key={symptom.id}
+                style={[
+                  styles.symptomCard,
+                  selectedSymptom === symptom.id && styles.symptomCardSelected
+                ]}
+                onPress={() => toggleSymptom(symptom.id)}
+              >
+                <TouchableOpacity 
+                  style={styles.editIconBadge}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleOpenEditModal(symptom.id);
+                  }}
+                >
+                  <PencilSimple size={14} color="white" weight="bold" />
+                </TouchableOpacity>
+                <View style={styles.symptomIcon}>
+                  <IconComponent 
+                    size={32} 
+                    color={selectedSymptom === symptom.id ? "#8B7CF6" : "#333"} 
+                    weight={selectedSymptom === symptom.id ? "fill" : "regular"}
+                  />
+                </View>
+                <Text style={styles.symptomText}>{symptom.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+
+        {/* SINTOMI COMUNI SECTION */}
+        <Text style={styles.sectionSubtitle}>Sintomi comuni</Text>
+        <View style={styles.symptomsGrid}>
+          {commonSymptoms.map((symptom) => {
+            const IconComponent = getIcon(symptom.iconName);
+            return (
+              <TouchableOpacity
+                key={symptom.id}
+                style={[
+                  styles.symptomCard,
+                  selectedSymptom === symptom.id && styles.symptomCardSelected
+                ]}
+                onPress={() => toggleSymptom(symptom.id)}
+              >
+                <View style={styles.symptomIcon}>
+                  <IconComponent 
+                    size={32} 
+                    color={selectedSymptom === symptom.id ? "#8B7CF6" : "#333"} 
+                    weight={selectedSymptom === symptom.id ? "fill" : "regular"}
+                  />
+                </View>
+                <Text style={styles.symptomText}>{symptom.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <ButtonNav 
@@ -149,12 +319,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
       />
 
       {/* Date Picker Modal */}
-      <Modal
-        visible={showDatePicker}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowDatePicker(false)}
-      >
+      <Modal visible={showDatePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -208,12 +373,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
       </Modal>
 
       {/* Time Picker Modal */}
-      <Modal
-        visible={showTimePicker}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowTimePicker(false)}
-      >
+      <Modal visible={showTimePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -255,48 +415,125 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
         </View>
       </Modal>
 
-      {/* Add Symptom Modal */}
+      {/* Add/Edit Symptom Modal */}
       <Modal
         visible={showAddSymptomModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowAddSymptomModal(false)}
+        onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.addSymptomModalContent}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => {
-                setShowAddSymptomModal(false);
-                setNewSymptomText('');
-              }}>
-                <Text style={styles.modalCancel}>Annulla</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Aggiungi Sintomo</Text>
-              <TouchableOpacity onPress={handleAddCustomSymptom}>
-                <Text style={[styles.modalDone, { opacity: newSymptomText.trim() ? 1 : 0.5 }]}>Salva</Text>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.newModalContent}>
+            <View style={styles.dragHandle} />
+            
+            <View style={styles.newModalHeader}>
+              <Text style={styles.newModalTitle}>
+                {editingSymptomId ? 'Modifica Sintomo' : 'Aggiungi Sintomo'}
+              </Text>
+              <TouchableOpacity style={styles.newCloseButton} onPress={closeModal}>
+                <X size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            <View style={styles.addSymptomContent}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Nuovo sintomo</Text>
+
+            <View style={styles.newModalBody}>
+              <TouchableOpacity 
+                style={styles.iconSelectionCircle}
+                onPress={() => setShowIconGrid(true)}
+              >
+                <View style={styles.selectedIconContainer}>
+                  {React.createElement(getIcon(newSymptomIconName), {
+                    size: 32,
+                    color: "#8B7CF6",
+                    weight: "fill"
+                  })}
+                  <View style={styles.miniPlusBadge}>
+                    <Plus size={10} color="white" weight="bold" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.newInputContainer}>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.newTextInput}
                   value={newSymptomText}
                   onChangeText={setNewSymptomText}
-                  placeholder="Inserisci il nome del sintomo..."
+                  placeholder="Nome del sintomo"
+                  placeholderTextColor="#999"
                   maxLength={50}
-                  autoFocus={true}
+                  textAlign="center"
                 />
               </View>
-              <View style={styles.iconPreview}>
-                <View style={styles.previewIcon}>
-                  <Ionicons name="add-circle" size={24} color="#8B7CF6" />
-                </View>
-                <Text style={styles.iconLabel}>Icona predefinita</Text>
-              </View>
+
+              <TouchableOpacity 
+                style={[
+                  styles.saveButtonLarge, 
+                  !newSymptomText.trim() && styles.saveButtonDisabled
+                ]}
+                onPress={handleSaveSymptom}
+                disabled={!newSymptomText.trim()}
+              >
+                <Text style={styles.saveButtonText}>
+                  {editingSymptomId ? 'AGGIORNA' : 'SALVA'}
+                </Text>
+              </TouchableOpacity>
+
+              {editingSymptomId && (
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={handleDeleteSymptom}
+                >
+                  <Text style={styles.deleteButtonText}>ELIMINA SINTOMO</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+
+        {/* Icon Grid Modal */}
+        <Modal 
+          visible={showIconGrid} 
+          transparent 
+          animationType="fade"
+          onRequestClose={() => setShowIconGrid(false)}
+        >
+          <View style={styles.iconGridOverlay}>
+            <View style={styles.iconGridContent}>
+              <View style={styles.iconGridHeader}>
+                <Text style={styles.iconGridTitle}>Scegli un'icona</Text>
+                <TouchableOpacity onPress={() => setShowIconGrid(false)}>
+                  <X size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView 
+                contentContainerStyle={styles.iconGridScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {AVAILABLE_ICONS.map((iconName) => (
+                  <TouchableOpacity
+                    key={iconName}
+                    style={[
+                      styles.iconGridItem,
+                      newSymptomIconName === iconName && styles.iconGridItemSelected
+                    ]}
+                    onPress={() => {
+                      setNewSymptomIconName(iconName);
+                      setShowIconGrid(false);
+                    }}
+                  >
+                    {React.createElement(getIcon(iconName), {
+                      size: 28,
+                      color: newSymptomIconName === iconName ? "#8B7CF6" : "#666",
+                      weight: newSymptomIconName === iconName ? "fill" : "regular"
+                    })}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </Modal>
     </View>
   );
@@ -339,7 +576,7 @@ const styles = StyleSheet.create({
   dateTimeContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 30,
+    marginBottom: 10,
   },
   dateBox: {
     backgroundColor: '#F5F5F5',
@@ -362,17 +599,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
+  sectionSubtitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#666',
+    marginTop: 24,
+    marginBottom: 16,
   },
   symptomsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20,
   },
   symptomCard: {
     width: '47%',
@@ -384,21 +621,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
+    position: 'relative',
   },
   symptomCardSelected: {
     backgroundColor: '#F0EFFF',
     borderColor: '#8B7CF6',
   },
+  editIconBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#8B7CF6',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   addSymptomCard: {
     width: '47%',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#ffeedd',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     minHeight: 120,
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#E5E5E5',
+    borderColor: '#FFDAB9',
     borderStyle: 'dashed',
   },
   symptomIcon: {
@@ -412,7 +667,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -465,51 +720,172 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
-  addSymptomModalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-    maxHeight: '60%',
+
+  // NEW MODAL STYLES
+  newModalContent: {
+    backgroundColor: '#F8F9FA',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  addSymptomContent: {
-    padding: 20,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+  dragHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#2D1F50',
+    borderRadius: 3,
+    marginTop: 12,
     marginBottom: 8,
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#F8F9FA',
+  newModalHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    position: 'relative',
   },
-  iconPreview: {
+  newModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  newCloseButton: {
+    position: 'absolute',
+    right: 24,
+    padding: 4,
+  },
+  newModalBody: {
+    width: '100%',
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    paddingTop: 10,
+  },
+  iconSelectionCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#D6D1FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  selectedIconContainer: {
+    position: 'relative',
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniPlusBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#8B7CF6',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D6D1FF',
+  },
+  newInputContainer: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  newTextInput: {
+    fontSize: 18,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+  saveButtonLarge: {
+    width: '100%',
+    backgroundColor: '#FFAD76',
+    paddingVertical: 18,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.8, // Reduced opacity but not fully disabled look
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  deleteButton: {
+    marginTop: 16,
+    padding: 10,
+  },
+  deleteButtonText: {
+    color: '#FF4B4B',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // ICON GRID STYLES
+  iconGridOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  iconGridContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: 'white',
+    borderRadius: 32,
+    maxHeight: '80%',
+    padding: 24,
+  },
+  iconGridHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconGridTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+  },
+  iconGridScroll: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingBottom: 20,
+  },
+  iconGridItem: {
+    width: (width - 110) / 4,
+    aspectRatio: 1,
     backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  previewIcon: {
-    marginBottom: 8,
-  },
-  iconLabel: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+  iconGridItemSelected: {
+    backgroundColor: '#F0EFFF',
+    borderWidth: 2,
+    borderColor: '#8B7CF6',
   },
 });

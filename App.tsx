@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Modal, Platform, ActivityIndicator, TouchableOpacity, Animated, Dimensions, Easing } from 'react-native';
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import TopNav from './components/TopNav';
 import BottomNav from './components/BottomNav';
@@ -20,11 +20,12 @@ import MoodFlow from './components/MoodFlow';
 import { Exercise } from './types/Exercise';
 import DailyExerciseService from './services/DailyExerciseService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import HorizontalSlideModal from './components/HorizontalSlideModal';
+import SlideModal from './components/SlideModal';
 
 
 
 function MainApp() {
+  const insets = useSafeAreaInsets();
   const { 
     currentUser, userActivities, isLoading, testCompleted, testResult, 
     currentMood, onboardingCompleted, handleAuthSuccess, handleLogout, 
@@ -46,18 +47,18 @@ function MainApp() {
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
 
   // Background animation for parallax effect
-  const { width } = Dimensions.get('window');
+  const { width, height } = Dimensions.get('window');
   const backgroundSlideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const shouldSlide = showActivityDetail || showActivationFlow || showExerciseDetail;
+    const shouldSlide = showActivityDetail || showExerciseDetail;
     Animated.timing(backgroundSlideAnim, {
-      toValue: shouldSlide ? -width * 0.15 : 0, // Shifting 15% to the left
+      toValue: shouldSlide ? -height * 0.08 : 0, // Shifting 8% upwards
       duration: shouldSlide ? 350 : 300,
       easing: shouldSlide ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
       useNativeDriver: true,
     }).start();
-  }, [showActivityDetail, showActivationFlow, showExerciseDetail]);
+  }, [showActivityDetail, showExerciseDetail]);
 
   // Show Onboarding if not completed and authenticated
   useEffect(() => {
@@ -89,9 +90,9 @@ function MainApp() {
 
   const handleCompleteActivationFlow = async () => {
     setShowActivationFlow(false);
-    setCurrentScreen('diary');
-    // Forza il refresh del diario incrementando la key
-    setDiaryRefreshKey(prev => prev + 1);
+    setCurrentScreen('home');
+    // Forza il refresh della home incrementando la key
+    setHomeRefreshKey(prev => prev + 1);
     try {
       await refreshActivities();
     } catch (error) {
@@ -208,6 +209,10 @@ function MainApp() {
     setSelectedExercise(null);
     setHomeRefreshKey(prev => prev + 1);
     await refreshActivities();
+    
+    // Al termine dell'esercizio torna alla Home del giorno
+    setActiveTab('home');
+    setCurrentScreen('home');
   };
 
   const handleNavigateToDiary = async () => {
@@ -222,57 +227,50 @@ function MainApp() {
 
   // Mostra AuthFlow se l'utente non è autenticato
   if (!currentUser && !isLoading) {
-    return (
-      <SafeAreaProvider>
-        <AuthFlow onAuthSuccess={handleAuthSuccess} />
-      </SafeAreaProvider>
-    );
+    return <AuthFlow onAuthSuccess={handleAuthSuccess} />;
   }
 
   // Mostra loading se stiamo verificando l'autenticazione
   if (isLoading) {
     return (
-      <SafeAreaProvider>
-        <View style={[styles.container, styles.loadingContainer]}>
-          <StatusBar style="dark" />
-          <ActivityIndicator size="large" color="#8B7CF6" />
-          <Text style={[styles.loadingText, { marginTop: 20 }]}>Caricamento...</Text>
-          
-          <TouchableOpacity 
-            onPress={() => {
-              console.warn('Bypass manuale del caricamento');
-              // Questo forzerà l'unblock via AuthContext
-              handleLogout(); 
-            }}
-            style={{ marginTop: 40, padding: 10 }}
-          >
-            <Text style={{ color: '#8B7CF6', fontSize: 14, textDecorationLine: 'underline' }}>
-              Problemi nel caricamento? Clicca qui
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaProvider>
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color="#8B7CF6" />
+        <Text style={[styles.loadingText, { marginTop: 20 }]}>Caricamento...</Text>
+        
+        <TouchableOpacity 
+          onPress={() => {
+            console.warn('Bypass manuale del caricamento');
+            // Questo forzerà l'unblock via AuthContext
+            handleLogout(); 
+          }}
+          style={{ marginTop: 40, padding: 10 }}
+        >
+          <Text style={{ color: '#8B7CF6', fontSize: 14, textDecorationLine: 'underline' }}>
+            Problemi nel caricamento? Clicca qui
+          </Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>
-        <Animated.View style={[styles.mainWrapper, { transform: [{ translateX: backgroundSlideAnim }] }]}>
-          <StatusBar style="dark" />
+    <View style={styles.container}>
+      <Animated.View style={[styles.mainWrapper, { transform: [{ translateY: backgroundSlideAnim }] }]}>
+        <StatusBar style="dark" />
+      
+        <View style={styles.topNavContainer}>
+          {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
+            <TopNav 
+              currentScreen={currentScreen}
+              onToggle={handleToggleScreen}
+              onAvatarPress={handleAvatarPress}
+              userName={currentUser?.name}
+            />
+          )}
+        </View>
         
-          <View style={styles.topNavContainer}>
-            {(currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home' && (
-              <TopNav 
-                currentScreen={currentScreen}
-                onToggle={handleToggleScreen}
-                onAvatarPress={handleAvatarPress}
-                userName={currentUser?.name}
-              />
-            )}
-          </View>
-          
-          <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? 115 : 0 }]}>
+        <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? insets.top + 85 : 0 }]}>
             {currentScreen === 'home' && activeTab === 'home' && (
               <HomePage
                 key={homeRefreshKey}
@@ -354,7 +352,7 @@ function MainApp() {
           )}
         </Animated.View>
 
-        <HorizontalSlideModal
+        <SlideModal
           visible={showActivityDetail}
           onClose={handleCloseActivityDetail}
         >
@@ -366,11 +364,12 @@ function MainApp() {
               onDelete={handleDeleteActivity}
             />
           )}
-        </HorizontalSlideModal>
+        </SlideModal>
         
-        <HorizontalSlideModal
+        <SlideModal
           visible={showActivationFlow}
           onClose={handleCloseActivationFlow}
+          direction="vertical"
         >
           <ActivationFlow 
             onClose={handleCloseActivationFlow}
@@ -381,7 +380,7 @@ function MainApp() {
               setShowExerciseDetail(true);
             }}
           />
-        </HorizontalSlideModal>
+        </SlideModal>
 
         <Modal
           visible={showProfile}
@@ -419,9 +418,10 @@ function MainApp() {
           <OnboardingFlow onComplete={handleLocalOnboardingComplete} />
         </Modal>
 
-        <HorizontalSlideModal
+        <SlideModal
           visible={showExerciseDetail}
           onClose={handleCloseExerciseDetail}
+          direction="vertical"
         >
           {selectedExercise && (
              <ExerciseDetailScreen
@@ -432,17 +432,18 @@ function MainApp() {
                onNavigateToDiary={handleNavigateToDiary}
              />
            )}
-        </HorizontalSlideModal>
+        </SlideModal>
       </View>
-    </SafeAreaProvider>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

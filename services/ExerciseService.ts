@@ -50,9 +50,9 @@ class ExerciseService {
       id: 'contrasta-compulsione',
       name: 'Contrasta la compulsione',
       introText: 'Questo esercizio ti aiuta a riconoscere e resistere alle compulsioni attraverso tecniche di esposizione graduale. Imparerai a tollerare l\'ansia senza cedere ai comportamenti compulsivi, rafforzando la tua capacità di controllo.',
-      benefitsText: '• Riduce la forza delle compulsioni\n• Aumenta la tolleranza all\'ansia\n• Migliora il senso di controllo\n• Sviluppa strategie di coping\n• Riduce la frequenza dei comportamenti compulsivi',
+      benefitsText: '• Riduce la forza delle compulsioni\n• Aumenta la tolleranza all\'ansia\n• Migliora il senso di controllo\n• Sviluppa strategie di coping\n• Migliora l’autocontrollo e la consapevolezza',
       objectiveText: 'Resistere alle compulsioni e tollerare l\'ansia',
-      duration: 20,
+      duration: 5,
       image: './assets/exercises/contrasta-compulsione.png',
       steps: [
         {
@@ -88,9 +88,9 @@ class ExerciseService {
       id: 'contrasta-ossessione',
       name: 'Contrasta l\'ossessione',
       introText: 'Questo esercizio ti aiuta a riconoscere e resistere alle ossessioni attraverso tecniche di mindfulness e distanziamento cognitivo. Imparerai a osservare i pensieri ossessivi senza identificarti con essi, riducendo il loro impatto emotivo.',
-      benefitsText: '• Riduce l\'intensità delle ossessioni\n• Aumenta la capacità di distanziamento cognitivo\n• Migliora il senso di controllo sui pensieri\n• Sviluppa strategie di coping per i pensieri intrusivi\n• Riduce la frequenza delle ruminazioni mentali',
+      benefitsText: '• Riduce l\'intensità delle ossessioni\n• Aumenta la capacità di distanziamento cognitivo\n• Migliora il senso di controllo sui pensieri\n• Sviluppa strategie di coping per i pensieri intrusivi\n• Migliora l’autocontrollo e la consapevolezza',
       objectiveText: 'Riconoscere e resistere alle ossessioni',
-      duration: 20,
+      duration: 5,
       image: './assets/exercises/contrasta-ossessione.png',
       steps: [
         {
@@ -236,7 +236,7 @@ class ExerciseService {
       introText: 'La respirazione consapevole è una tecnica fondamentale di mindfulness che ti aiuta a calmare la mente e ridurre l\'ansia. Attraverso l\'attenzione al respiro, svilupperai maggiore consapevolezza del momento presente e imparerai a gestire lo stress in modo naturale.',
       benefitsText: '• Riduce ansia e stress immediatamente\n• Migliora la concentrazione e la chiarezza mentale\n• Attiva il sistema nervoso parasimpatico\n• Favorisce il rilassamento profondo\n• Sviluppa la consapevolezza del momento presente\n• Migliora la qualità del sonno',
       objectiveText: 'Calmare la mente e ridurre l\'ansia attraverso il respiro',
-      duration: 12,
+      duration: 3,
       image: './assets/exercises/respirazione-consapevole.png',
       steps: [
         {
@@ -249,22 +249,6 @@ class ExerciseService {
             'Rilassa le spalle, allenta la tensione nella mascella e nel viso',
             'Ricorda che questa pratica è disponibile in qualsiasi momento della giornata'
           ]
-        },
-        {
-          id: 'audio-practice',
-          type: 'withaudio',
-          title: 'Pratica con Audio',
-          content: [
-            'Clicca Play per iniziare il sottofondo musicale',
-            'Chiudi gli occhi e rilassati',
-            'Inspira accogliendo energia, espira rilasciando tensione',
-            'Prova un respiro più profondo: inspira contando fino a 4, espira fino a 6',
-            'Ritorna gradualmente a un ritmo di respirazione naturale',
-            'Mantieni l\'attenzione sulle sensazioni di ogni ciclo respiratorio',
-            'Se la mente vaga, riportala gentilmente al respiro',
-          ],
-          audioFile: './assets/audio/breathing-guide.mp3',
-          duration: 480
         }
       ],
       category: 'mindfulness',

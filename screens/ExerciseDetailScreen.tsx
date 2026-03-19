@@ -11,10 +11,14 @@ import {
   Image,
   Animated,
   Easing,
+  FlatList,
+  Platform,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Play, Pause, Stop as PhosphorStop, MusicNotesMinus, MusicNotesPlus, ArrowLeft, X } from 'phosphor-react-native';
 import { Audio } from 'expo-av';
-import Svg, { Circle, Path, G, ClipPath, Defs, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, G, ClipPath, Defs, Rect, Mask, LinearGradient, Stop } from 'react-native-svg';
 import { Exercise, ExerciseStep, ExerciseProgress } from '../types/Exercise';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 import authService from '../services/AuthService';
@@ -99,6 +103,423 @@ const getExerciseImagePNG = (imagePath: string) => {
   return imageMap[imagePath] || require('../assets/exercises/body-scan.png');
 };
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+interface BreathingScreenProps {
+  onClose: () => void;
+  onComplete: () => void;
+  onAbort: () => void;
+  initialIsPlaying: boolean;
+}
+
+const BreathingScreen: React.FC<BreathingScreenProps> = ({
+  onClose,
+  onComplete,
+  onAbort,
+  initialIsPlaying,
+}) => {
+  const [timeLeft, setTimeLeft] = useState(180); // 3 minutes
+  const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [phaseText, setPhaseText] = useState("INSPIRA");
+  const [showExitMenu, setShowExitMenu] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [audioFadingOut, setAudioFadingOut] = useState(false);
+  
+  const textFadeAnim = useRef(new Animated.Value(1)).current;
+  const currentPhaseRef = useRef("INSPIRA");
+  
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const audioRef = useRef<Audio.Sound | null>(null);
+
+  const timeElapsed = useRef(0);
+  const CIRCLE_RADIUS = width * 0.35; // Responsive circle size
+  const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+  
+  const animRadius = useRef(new Animated.Value(CIRCLE_RADIUS * 0.2)).current;
+  const animStroke = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadAudio = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/audio/breathing-guide.mp3')
+        );
+        if (!isMounted) {
+          sound.unloadAsync();
+          return;
+        }
+        audioRef.current = sound;
+        if (isPlaying && musicEnabled) {
+          await sound.playAsync();
+        }
+      } catch (e) {
+        console.error("Error loading breathing audio", e);
+      }
+    };
+    loadAudio();
+
+    return () => {
+      isMounted = false;
+      if (audioRef.current) {
+        audioRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  // Early audio fade-out logic (starts at last 5 seconds)
+  useEffect(() => {
+    let fadeOutInterval: NodeJS.Timeout;
+    if (timeLeft <= 5 && timeLeft > 0 && !audioFadingOut && musicEnabled && audioRef.current) {
+      setAudioFadingOut(true);
+      let vol = 1.0;
+      fadeOutInterval = setInterval(async () => {
+        vol -= 0.05; // 20 steps down to 0
+        if (vol <= 0) {
+          vol = 0;
+          clearInterval(fadeOutInterval);
+        }
+        if (audioRef.current) {
+          try {
+            await audioRef.current.setVolumeAsync(vol);
+          } catch (e) {
+            // Ignore if audio is manually stopped/unmounted
+          }
+        }
+      }, 250); // 20 steps * 250ms = 5000ms (5 seconds)
+    }
+
+    return () => {
+      if (fadeOutInterval) clearInterval(fadeOutInterval);
+    };
+  }, [timeLeft, audioFadingOut, musicEnabled]);
+
+  // Visual auto-completion fade-out logic
+  useEffect(() => {
+    if (timeLeft <= 0 && !isFinishing) {
+      setIsFinishing(true);
+      
+      Animated.timing(contentOpacity, {
+        toValue: 0,
+        duration: 3000,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+
+      setTimeout(() => {
+        onComplete();
+      }, 3000); // 3 seconds visual fade
+    }
+  }, [timeLeft, isFinishing]);
+
+  useEffect(() => {
+    let frameId: number;
+    let lastTime = Date.now();
+    let localElapsed = timeElapsed.current;
+
+    const updatePhase = (newPhase: string) => {
+      if (currentPhaseRef.current !== newPhase) {
+        currentPhaseRef.current = newPhase;
+        Animated.sequence([
+          Animated.timing(textFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+          Animated.timing(textFadeAnim, { toValue: 1, duration: 300, useNativeDriver: true })
+        ]).start();
+        setTimeout(() => setPhaseText(newPhase), 150);
+      }
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      
+      localElapsed += delta;
+      timeElapsed.current = localElapsed;
+      
+      const secondsLeft = Math.max(0, 180 - Math.floor(localElapsed / 1000));
+      setTimeLeft(secondsLeft);
+      
+      const cycleTime = localElapsed % 16000;
+      
+      if (cycleTime < 5000) {
+         updatePhase("INSPIRA");
+         const progress = cycleTime / 5000;
+         const eased = 0.5 - Math.cos(progress * Math.PI) / 2;
+         animRadius.setValue(CIRCLE_RADIUS * eased);
+         animStroke.setValue(0);
+      } else if (cycleTime < 8000) {
+         updatePhase("MANTIENI IL RESPIRO");
+         const progress = (cycleTime - 5000) / 3000;
+         const pulse = Math.sin(progress * Math.PI * 4) * 0.015;
+         animRadius.setValue(CIRCLE_RADIUS * (1 + pulse));
+         animStroke.setValue(progress);
+      } else if (cycleTime < 13000) {
+         updatePhase("ESPIRA");
+         const progress = (cycleTime - 8000) / 5000;
+         const eased = 0.5 - Math.cos(progress * Math.PI) / 2;
+         animRadius.setValue(CIRCLE_RADIUS * (1 - eased));
+         animStroke.setValue(0);
+      } else {
+         updatePhase("MANTIENI IL RESPIRO");
+         const progress = (cycleTime - 13000) / 3000;
+         animRadius.setValue(0);
+         animStroke.setValue(progress);
+      }
+      
+      frameId = requestAnimationFrame(tick);
+    };
+
+    if (isPlaying) {
+      lastTime = Date.now();
+      frameId = requestAnimationFrame(tick);
+      if (musicEnabled && audioRef.current) {
+        audioRef.current.playAsync();
+      }
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pauseAsync();
+      }
+    }
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [isPlaying, musicEnabled, onComplete, audioRef]);
+
+  const toggleMusic = async () => {
+    const nextState = !musicEnabled;
+    setMusicEnabled(nextState);
+    if (!nextState && audioRef.current) {
+      await audioRef.current.pauseAsync();
+    } else if (nextState && audioRef.current && isPlaying) {
+      await audioRef.current.playAsync();
+    }
+  };
+
+  const handleStop = async () => {
+    if (audioRef.current) {
+      await audioRef.current.stopAsync();
+    }
+    onComplete();
+  };
+
+  const handleCloseRequest = () => {
+    setShowExitMenu(true);
+  };
+
+  const strokeDashoffset = animStroke.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CIRCLE_CIRCUMFERENCE, 0]
+  });
+
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  const svgSize = CIRCLE_RADIUS * 2 + 30;
+
+  return (
+    <View style={breathingStyles.container}>
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }} pointerEvents={isFinishing ? 'none' : 'auto'}>
+        <View style={breathingStyles.header}>
+          <TouchableOpacity onPress={onClose} style={breathingStyles.headerIcon}>
+          <ArrowLeft color="white" size={28} weight="regular" />
+        </TouchableOpacity>
+        <Text style={breathingStyles.timeText}>{timeStr}</Text>
+        <TouchableOpacity onPress={handleCloseRequest} style={breathingStyles.headerIcon}>
+          <X color="white" size={28} weight="regular" />
+        </TouchableOpacity>
+      </View>
+      
+      <View style={breathingStyles.animationContainer}>
+        <Svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+          <Defs>
+            <LinearGradient id="circleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+              <Stop offset="100%" stopColor="#e0e7ff" stopOpacity="0.8" />
+            </LinearGradient>
+          </Defs>
+          <Circle 
+            cx={svgSize/2} 
+            cy={svgSize/2} 
+            r={CIRCLE_RADIUS} 
+            fill="none" 
+            stroke="rgba(255,255,255,0.15)"
+            strokeWidth={2}
+          />
+          <AnimatedCircle 
+            cx={svgSize/2} 
+            cy={svgSize/2} 
+            r={animRadius} 
+            fill="url(#circleGrad)" 
+          />
+          <AnimatedCircle
+            cx={svgSize/2} 
+            cy={svgSize/2} 
+            r={CIRCLE_RADIUS}
+            fill="none"
+            stroke="rgba(255,255,255,0.9)"
+            strokeWidth={6}
+            strokeLinecap="round"
+            strokeDasharray={CIRCLE_CIRCUMFERENCE}
+            strokeDashoffset={strokeDashoffset}
+            transform={`rotate(-90 ${svgSize/2} ${svgSize/2})`}
+          />
+        </Svg>
+        <Animated.Text style={[breathingStyles.phaseText, { opacity: textFadeAnim }]}>{phaseText}</Animated.Text>
+      </View>
+      
+      <View style={breathingStyles.controlsContainer}>
+        <TouchableOpacity onPress={toggleMusic} style={breathingStyles.secondaryBtn}>
+          {musicEnabled ? <MusicNotesMinus color="white" size={24} weight="fill" /> : <MusicNotesPlus color="white" size={24} weight="fill" />}
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => setIsPlaying(!isPlaying)} style={breathingStyles.playBtn}>
+          {isPlaying ? <Pause color="#8B7CF6" size={36} weight="fill" /> : <Play color="#8B7CF6" size={36} weight="fill" />}
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={handleStop} style={breathingStyles.secondaryBtn}>
+          <PhosphorStop color="white" size={24} weight="fill" />
+        </TouchableOpacity>
+      </View>
+      </Animated.View>
+
+      <Modal visible={showExitMenu} transparent animationType="fade">
+        <View style={breathingStyles.modalOverlay}>
+          <View style={breathingStyles.actionSheet}>
+            <View style={breathingStyles.actionSheetGroup}>
+              <TouchableOpacity style={breathingStyles.actionButtonDestructive} onPress={async () => {
+                 setShowExitMenu(false);
+                 if (audioRef.current) await audioRef.current.stopAsync();
+                 onAbort();
+              }}>
+                 <Text style={breathingStyles.actionTextDestructive}>Abbandona</Text>
+              </TouchableOpacity>
+              <View style={breathingStyles.actionSeparator} />
+              <TouchableOpacity style={breathingStyles.actionButton} onPress={() => {
+                 setShowExitMenu(false);
+                 handleStop();
+              }}>
+                 <Text style={breathingStyles.actionText}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[breathingStyles.actionSheetGroup, breathingStyles.actionButton, { marginTop: 8 }]} onPress={() => setShowExitMenu(false)}>
+               <Text style={breathingStyles.actionTextBold}>Cancella</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const breathingStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8B7CF6',
+    zIndex: 1000,
+    justifyContent: 'space-between',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+  },
+  headerIcon: {
+    padding: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  actionSheet: {
+    margin: 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  actionSheetGroup: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  actionButton: {
+    padding: 18,
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  actionButtonDestructive: {
+    padding: 18,
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  actionText: {
+    fontSize: 20,
+    color: '#007AFF', // iOS blue
+  },
+  actionTextBold: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  actionTextDestructive: {
+    fontSize: 20,
+    color: '#FF3B30', // iOS red
+  },
+  actionSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#ccc',
+  },
+  timeText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '500',
+  },
+  animationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phaseText: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '600',
+    marginTop: 40,
+    letterSpacing: 1,
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 60,
+  },
+  playBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  secondaryBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
+});
+
+
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   exercise,
   onBack,
@@ -119,85 +540,49 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const audioRef = useRef<Audio.Sound | null>(null);
   const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
   const breathingScale = useRef(new Animated.Value(1)).current;
-  const breathingLoop = useRef<Animated.CompositeAnimation | null>(null);
-
-  const startBreathingAnimation = () => {
-    // Sequenza:
-    // 1. Inspirazione (4s) -> Scale up
-    // 2. Pausa (1s)
-    // 3. Espirazione (6s) -> Scale down
-    // 4. Pausa (1s)
-    
-    breathingLoop.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathingScale, {
-          toValue: 2.5, // Cerchio si ingrandisce
-          duration: 4000,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.ease),
-        }),
-        Animated.delay(1000), // Pausa inspirazione
-        Animated.timing(breathingScale, {
-          toValue: 1, // Cerchio si rimpicciolisce
-          duration: 6000,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.ease),
-        }),
-        Animated.delay(1000), // Pausa espirazione
-      ])
-    );
-    breathingLoop.current.start();
-  };
-
-  const stopBreathingAnimation = () => {
-    if (breathingLoop.current) {
-      breathingLoop.current.stop();
-      breathingLoop.current = null;
-    }
-    // Reset scale
-    breathingScale.setValue(1);
-  };
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
 
   const handleStartExercise = () => {
     setIsStarted(true);
-    setCurrentStep(0);
+    // Use scrollToOffset for reliable cross-platform navigation
+    flatListRef.current?.scrollToOffset({ offset: width, animated: true });
   };
 
   const handleNextStep = async () => {
-    // Ferma l'audio e l'animazione quando si passa al prossimo step
     if (audioRef.current) {
       await audioRef.current.pauseAsync();
       setIsPlaying(false);
       await audioRef.current.unloadAsync();
       audioRef.current = null;
-      setAudioProgress(0);
-      setAudioDuration(0);
     }
-    setShowBreathingAnimation(false);
-    stopBreathingAnimation();
+    // Removed unconditional close of Breathing Animation to handle single-slide scenarios.
     
-    if (currentStep < exercise.steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+    if (exercise.id === 'respirazione-consapevole' && currentStep === 1) {
+      setShowBreathingAnimation(true);
+      setIsPlaying(true);
+      return;
+    }
+    
+    if (currentStep < exercise.steps.length) {
+      flatListRef.current?.scrollToOffset({ offset: width * (currentStep + 1), animated: true });
     } else {
       handleCompleteExercise();
     }
   };
 
   const handlePreviousStep = async () => {
-    // Ferma l'audio e l'animazione quando si torna al step precedente
     if (audioRef.current) {
       await audioRef.current.pauseAsync();
       setIsPlaying(false);
       await audioRef.current.unloadAsync();
       audioRef.current = null;
-      setAudioProgress(0);
-      setAudioDuration(0);
     }
     setShowBreathingAnimation(false);
-    stopBreathingAnimation();
     
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      flatListRef.current?.scrollToOffset({ offset: width * (currentStep - 1), animated: true });
     }
   };
 
@@ -208,14 +593,146 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     }));
   };
 
+  const handleSkip = async (seconds: number) => {
+    if (audioRef.current) {
+      try {
+        const status = await audioRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          const currentPosition = status.positionMillis || 0;
+          const duration = status.durationMillis || 0;
+          const newTime = Math.max(0, Math.min(
+            currentPosition + (seconds * 1000),
+            duration
+          ));
+          await audioRef.current.setPositionAsync(newTime);
+        }
+      } catch (error) {
+        console.error('Errore nel skip audio:', error);
+      }
+    }
+  };
+
+  const handlePlayPause = async () => {
+    try {
+      if (!audioRef.current) {
+        // Carica l'audio per lo step corrente - usiamo currentStep-1 se Intro è indici 0
+        const stepIndex = currentStep - 1;
+        if (stepIndex < 0) return; // Non c'è audio nell'intro
+        
+        const currentStepData = exercise.steps[stepIndex];
+        if (currentStepData.audioFile) {
+          const audioMap = {
+            './assets/audio/breathing-guide.mp3': require('../assets/audio/breathing-guide.mp3'),
+            './assets/audio/meditation-step1-preparation.mp3': require('../assets/audio/meditation-step1-preparation.mp3'),
+            './assets/audio/meditation-step2-practice.mp3': require('../assets/audio/meditation-step2-practice.mp3'),
+            './assets/audio/meditation-guided.mp3': require('../assets/audio/meditation-guided.mp3'),
+          };
+          const audioPath = audioMap[currentStepData.audioFile as keyof typeof audioMap];
+          if (!audioPath) {
+            console.error('Audio file not found in map:', currentStepData.audioFile);
+            return;
+          }
+          
+          const { sound } = await Audio.Sound.createAsync(audioPath);
+          audioRef.current = sound;
+          
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded) {
+              if (status.durationMillis) setAudioDuration(status.durationMillis);
+              if (status.positionMillis !== undefined) setAudioProgress(status.positionMillis);
+              if (status.didJustFinish) {
+                setIsPlaying(false);
+                setShowBreathingAnimation(false);
+              }
+            }
+          });
+        }
+      }
+      
+      if (audioRef.current) {
+        if (isPlaying) {
+          await audioRef.current.pauseAsync();
+          setIsPlaying(false);
+          if (exercise.id === 'respirazione-consapevole') {
+            setShowBreathingAnimation(false);
+          }
+        } else {
+          await audioRef.current.playAsync();
+          setIsPlaying(true);
+          const stepIndex = currentStep - 1;
+          if (exercise.id === 'respirazione-consapevole' && stepIndex >= 0 && exercise.steps[stepIndex].audioFile) {
+            setShowBreathingAnimation(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Errore nella riproduzione audio:', error);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.unloadAsync();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const renderAudioPlayer = () => {
+    const progressPercentage = audioDuration > 0 ? (audioProgress / audioDuration) * 100 : 0;
+    const circumference = 2 * Math.PI * 28;
+    const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+    
+    return (
+      <View style={styles.audioPlayerContainerCard}>
+        <TouchableOpacity style={styles.skipButtonCard} onPress={() => handleSkip(-15)}>
+          <Ionicons name="play-back" size={20} color="#8B7CF6" />
+        </TouchableOpacity>
+        
+        <View style={styles.playButtonContainerCard}>
+          <Svg width="56" height="56" style={styles.progressCircle}>
+            <Circle
+              cx="28"
+              cy="28"
+              r="26"
+              stroke="rgba(139, 124, 246, 0.1)"
+              strokeWidth="2"
+              fill="none"
+            />
+            <Circle
+              cx="28"
+              cy="28"
+              r="26"
+              stroke="#8B7CF6"
+              strokeWidth="2"
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              transform="rotate(-90 28 28)"
+            />
+          </Svg>
+          <TouchableOpacity style={styles.playButtonCard} onPress={handlePlayPause}>
+            <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#8B7CF6" />
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity style={styles.skipButtonCard} onPress={() => handleSkip(15)}>
+          <Ionicons name="play-forward" size={20} color="#8B7CF6" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+
   const handleCompleteExercise = async () => {
     // Stop audio and animation if active
     if (audioRef.current) {
       await audioRef.current.stopAsync();
       setIsPlaying(false);
     }
-    setShowBreathingAnimation(false);
-    stopBreathingAnimation();
+    // Breathing screen will be hidden right after setting success true!
 
     setIsCompleting(true);
     try {
@@ -241,11 +758,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         date: localDate,
         time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
         type: 'ossessione' as const,
-        symptom: exercise.category || 'Esercizio',
+        symptom: exercise.name,
         intensity: 'completato',
         description: userText
-          ? `Esercizio completato: ${exercise.name}.\n\n${userText}`
-          : `Esercizio completato: ${exercise.name}.`,
+          ? `Esercizio completato con successo.\n\n${userText}`
+          : `Esercizio completato con successo.`,
       };
       
       await authService.addActivity(activity);
@@ -263,247 +780,141 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       );
     } finally {
       setIsCompleting(false);
+      setShowBreathingAnimation(false);
     }
   };
 
-  const renderIntroduction = () => (
-    <ScrollView 
-      style={styles.introContainer} 
-      contentContainerStyle={styles.introContentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.introContent}>
-        <Text style={styles.durationText}>{exercise.duration} minuti</Text>
-        <Text style={styles.exerciseTitle}>{exercise.name}</Text>
-        
-        <Text style={styles.introText}>{exercise.introText}</Text>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Perché</Text>
-          <View style={styles.benefitsList}>
-            <Text style={styles.benefitItem}>• Riduzione dello stress e dell'ansia</Text>
-            <Text style={styles.benefitItem}>• Migliore connessione con il corpo</Text>
-            <Text style={styles.benefitItem}>• Miglioramento del sonno</Text>
-          </View>
-        </View>
-        
-      </View>
-    </ScrollView>
-  );
-
-  const renderNavigationDots = () => (
-    <View style={styles.navigationDots}>
-      {exercise.steps.map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.dot,
-            index === currentStep ? styles.activeDot : styles.inactiveDot,
-          ]}
-        />
-      ))}
-    </View>
-  );
-
-  const handleSkip = async (seconds: number) => {
-    if (audioRef.current) {
-      try {
-        const status = await audioRef.current.getStatusAsync();
-        if (status.isLoaded) {
-          const currentPosition = status.positionMillis || 0;
-          const duration = status.durationMillis || 0;
-          const newTime = Math.max(0, Math.min(
-            currentPosition + (seconds * 1000),
-            duration
-          ));
-          await audioRef.current.setPositionAsync(newTime);
-        }
-      } catch (error) {
-        console.error('Errore nel skip audio:', error);
-      }
-    }
-  };
-
-  const handlePlayPause = async () => {
-    try {
-      if (!audioRef.current) {
-        // Carica l'audio per lo step corrente
-        const currentStepData = exercise.steps[currentStep];
-        if (currentStepData.audioFile) {
-          // Determina quale audio caricare basato sul currentStep
-          const audioMap = {
-            './assets/audio/breathing-guide.mp3': require('../assets/audio/breathing-guide.mp3'),
-            './assets/audio/meditation-step1-preparation.mp3': require('../assets/audio/meditation-step1-preparation.mp3'),
-            './assets/audio/meditation-step2-practice.mp3': require('../assets/audio/meditation-step2-practice.mp3'),
-            './assets/audio/meditation-guided.mp3': require('../assets/audio/meditation-guided.mp3'),
-          };
-          const audioPath = audioMap[currentStepData.audioFile as keyof typeof audioMap];
-          if (!audioPath) {
-            console.error('Audio file not found in map:', currentStepData.audioFile);
-            return;
-          }
-          
-          const { sound } = await Audio.Sound.createAsync(audioPath);
-          audioRef.current = sound;
-          
-          // Imposta i callback per il progresso
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded) {
-              if (status.durationMillis) {
-                setAudioDuration(status.durationMillis);
-              }
-              if (status.positionMillis !== undefined) {
-                setAudioProgress(status.positionMillis);
-              }
-              if (status.didJustFinish) {
-                setIsPlaying(false);
-                setShowBreathingAnimation(false);
-                stopBreathingAnimation();
-              }
-            }
-          });
-        }
-      }
-      
-      if (audioRef.current) {
-        if (isPlaying) {
-          await audioRef.current.pauseAsync();
-          setIsPlaying(false);
-          // Ferma animazione se presente
-          if (exercise.id === 'respirazione-consapevole') {
-            setShowBreathingAnimation(false);
-            stopBreathingAnimation();
-          }
-        } else {
-          await audioRef.current.playAsync();
-          setIsPlaying(true);
-          // Avvia animazione se è l'esercizio corretto
-          if (exercise.id === 'respirazione-consapevole' && exercise.steps[currentStep].audioFile) {
-            setShowBreathingAnimation(true);
-            startBreathingAnimation();
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Errore nella riproduzione audio:', error);
-    }
-  };
-  
-  useEffect(() => {
-    return () => {
-      // Cleanup audio quando il componente viene smontato
-      if (audioRef.current) {
-        audioRef.current.unloadAsync();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  const renderAudioPlayer = () => {
-    const progressPercentage = audioDuration > 0 ? (audioProgress / audioDuration) * 100 : 0;
-    const circumference = 2 * Math.PI * 28; // raggio 28
-    const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+  const renderNavigationDots = () => {
+    if (currentStep === 0) return null;
+    
+    let totalDots = exercise.steps.length;
+    if (exercise.id === 'respirazione-consapevole') totalDots += 1;
     
     return (
-      <View style={styles.audioPlayerContainer}>
-        <TouchableOpacity style={styles.skipButton} onPress={() => handleSkip(-15)}>
-          <Text style={styles.skipText}>-15s</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.playButtonContainer}>
-          <Svg width="64" height="64" style={styles.progressCircle}>
-            <Circle
-              cx="32"
-              cy="32"
-              r="28"
-              stroke="rgba(255, 255, 255, 0.3)"
-              strokeWidth="2"
-              fill="none"
-            />
-            <Circle
-              cx="32"
-              cy="32"
-              r="28"
-              stroke="white"
-              strokeWidth="2"
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              transform="rotate(-90 32 32)"
-            />
-          </Svg>
-          <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
-            <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
-          </TouchableOpacity>
-        </View>
-        
-        <TouchableOpacity style={styles.skipButton} onPress={() => handleSkip(15)}>
-          <Text style={styles.skipText}>+15s</Text>
-        </TouchableOpacity>
+      <View style={styles.headerNavigationDots}>
+        {Array.from({ length: totalDots }).map((_, index) => (
+          <View
+            key={`dot-${index}`}
+            style={[
+              styles.headerDot,
+              index === currentStep - 1 ? styles.headerActiveDot : styles.headerInactiveDot,
+            ]}
+          />
+        ))}
       </View>
     );
   };
 
-  const renderStep = (step: ExerciseStep) => (
-    <View style={styles.stepContainer}>
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>{step.title}</Text>
-        <Text style={styles.stepCounter}>
-          {currentStep + 1} di {exercise.steps.length}
-        </Text>
+  const renderIntroductionItem = () => (
+    <View style={[styles.introSlideContainer, { minHeight: listHeight > 0 ? listHeight : '100%' }]}>
+      <ScrollView 
+        style={styles.introContentScroll} 
+        contentContainerStyle={styles.introScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.introDurationText}>{exercise.duration} minuti</Text>
+        <Text style={styles.introTitleText}>{exercise.name}</Text>
+        
+        <Text style={styles.introDescriptionText}>{exercise.introText}</Text>
+        
+        <View style={styles.introSection}>
+          <Text style={styles.introSectionTitle}>Perché</Text>
+          <View style={styles.introBenefitsContainer}>
+            {exercise.benefitsText.split('\n').map((benefit, index) => (
+              <View key={index} style={styles.introBenefitRow}>
+                <Text style={styles.introBenefitBullet}>•</Text>
+                <Text style={styles.introBenefitText}>{benefit.replace(/^[•-]\s*/, '')}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+      
+      <View style={styles.introActionFooter}>
+        <TouchableOpacity style={styles.introStartButton} onPress={handleStartExercise}>
+          <Text style={styles.introStartButtonText}>INIZIA</Text>
+        </TouchableOpacity>
       </View>
-      
-      {(step.type === 'default' || step.type === 'withaudio') && step.content && (
-        <View style={styles.stepContent}>
-          {step.content.map((item, index) => (
-            <View key={index} style={styles.listItem}>
-              <View style={styles.listBullet} />
-              <Text style={styles.listText}>{item}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-      
-      {step.type === 'withtextarea' && (
-        <View style={styles.stepContent}>
-          {step.placeholder && (
-            <Text style={styles.inputLabel}>{step.placeholder}</Text>
-          )}
-          <TextInput
-            style={styles.textArea}
-            value={stepResponses[step.id] || ''}
-            onChangeText={(text) => handleStepResponse(step.id, text)}
-            multiline
-            numberOfLines={8}
-            textAlignVertical="top"
-          />
-        </View>
-      )}
     </View>
   );
 
+  const renderStepItem = (step: ExerciseStep) => (
+    <View style={[styles.slideItem, { minHeight: listHeight > 0 ? listHeight : '100%' }]}>
+      <View style={styles.stepContainer}>
+        <View style={styles.stepHeader}>
+          <Text style={styles.stepTitleWhite}>{step.title}</Text>
+        </View>
+        
+        <View style={styles.contentCard}>
+          {(step.type === 'default' || step.type === 'withaudio') && step.content && (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {step.content.map((item, index) => (
+                <View key={index} style={styles.listItem}>
+                  <View style={styles.listBulletPurple} />
+                  <Text style={styles.listTextCard}>{item}</Text>
+                </View>
+              ))}
+              {step.audioFile ? renderAudioPlayer() : null}
+            </ScrollView>
+          )}
+          
+          {step.type === 'withtextarea' && (
+            <View style={styles.textAreaContainer}>
+              {step.placeholder && (
+                <Text style={styles.inputLabelCard}>{step.placeholder}</Text>
+              )}
+              <TextInput
+                style={styles.textAreaCard}
+                value={stepResponses[step.id] || ''}
+                onChangeText={(text) => handleStepResponse(step.id, text)}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+                placeholderTextColor="#999"
+              />
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderHeader = () => (
+    <View style={styles.fixedHeader}>
+      <View style={styles.headerIconButton}>
+        {currentStep > 0 && (
+          <TouchableOpacity 
+            onPress={handlePreviousStep}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      {renderNavigationDots()}
+      
+      <TouchableOpacity style={styles.headerIconButton} onPress={onClose}>
+        <Ionicons name="close" size={24} color="white" />
+      </TouchableOpacity>
+    </View>
+  );
   const renderSuccessScreen = () => (
     <View style={styles.successContainer}>
       <View style={styles.successHeader}>
-        <TouchableOpacity style={styles.closeButton} onPress={onComplete}>
-          <Ionicons name="close" size={24} color="#333" />
-        </TouchableOpacity>
+        {/* rimosso X qui */}
       </View>
-      
       <View style={styles.successContent}>
-        <Text style={styles.successTitle}>Salvato nel tuo diario</Text>
-        <Text style={styles.successSubtitle}>
-          L'esercizio è ora registrato nel diario e condivisibile con il tuo terapista
-        </Text>
-        
         <Image 
-          source={require('../assets/exercises/success.png')}
+          source={require('../assets/exercises/success.png')} 
           style={styles.successImage}
           resizeMode="contain"
         />
-        
-        <Text style={styles.successQuestion}>Come ti senti ora?</Text>
+        <Text style={styles.successTitle}>Ottimo lavoro!</Text>
+        <Text style={styles.successSubtitle}>
+          Hai completato l'esercizio con successo. Ogni passo conta nel tuo percorso.
+        </Text>
+
+        <Text style={styles.successQuestion}>Come ti senti adesso?</Text>
         
         <View style={styles.moodContainer}>
           {(['sad', 'neutral', 'happy'] as const).map((mood) => (
@@ -511,139 +922,99 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
               key={mood}
               style={[
                 styles.moodButton,
-                {
-                  borderColor: selectedMood === mood ? getMoodColor(mood) : '#E8E8E8',
-                  borderWidth: 2,
-                },
+                selectedMood === mood && { backgroundColor: getMoodColor(mood) + '20' }
               ]}
-              onPress={() => {
-                setSelectedMood(mood);
-                setCurrentMood(mood);
-              }}
+              onPress={() => setSelectedMood(mood)}
             >
               {getMoodComponent(mood, selectedMood === mood)}
             </TouchableOpacity>
           ))}
         </View>
       </View>
-      
+
       <View style={styles.successButtonContainer}>
-        <TouchableOpacity style={styles.diaryButton} onPress={onNavigateToDiary || onComplete}>
-          <Text style={styles.diaryButtonText}>DIARIO</Text>
+        <TouchableOpacity 
+          style={styles.diaryButton} 
+          onPress={() => {
+            if (selectedMood) {
+              setCurrentMood(selectedMood);
+            }
+            onComplete();
+          }}
+        >
+          <Text style={styles.diaryButtonText}>Torna alla Home</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  const renderBreathingAnimation = () => (
-    <View style={styles.fullScreenAnimation}>
-      <TouchableOpacity 
-        style={styles.closeAnimationButton} 
-        onPress={handlePlayPause}
-      >
-        <Ionicons name="close" size={32} color="white" />
-      </TouchableOpacity>
-      
-      <Animated.View 
-        style={[
-          styles.breathingCircle,
-          {
-            transform: [{ scale: breathingScale }]
-          }
-        ]}
-      />
-      
-      <View style={styles.breathingControls}>
-        <TouchableOpacity style={styles.largePlayButton} onPress={handlePlayPause}>
-          <Ionicons name="pause" size={48} color="white" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const [listHeight, setListHeight] = useState<number>(0);
+
+  if (showSuccessScreen) return renderSuccessScreen();
+
+  const allSlides = [{ id: 'intro', slideType: 'intro' as const }, ...exercise.steps.map(s => ({ ...s, slideType: 'step' as const }))];
 
   return (
     <View style={styles.container}>
-      {showBreathingAnimation ? (
-        renderBreathingAnimation()
-      ) : showSuccessScreen ? (
-        renderSuccessScreen()
-      ) : !isStarted ? (
-        <>
-          <View style={styles.header}>
-            <View style={styles.leftSection}>
-              <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                <Ionicons name="arrow-back" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Ionicons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-          {renderIntroduction()}
-          <View style={styles.fixedButtonContainer}>
-            <TouchableOpacity 
-              style={styles.startButton}
-              onPress={handleStartExercise}
-            >
-              <Text style={styles.startButtonText}>INIZIA</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      ) : (
-        <>
-          <View style={styles.exerciseStepHeader}>
-            <View style={styles.leftSection}>
-               <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                 <Ionicons name="arrow-back" size={24} color="white" />
-               </TouchableOpacity>
-             </View>
-             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-               <Ionicons name="close" size={24} color="white" />
-             </TouchableOpacity>
-          </View>
-          <View style={styles.stepContentHeader}>
-             {renderNavigationDots()}
-             {exercise.steps[currentStep].audioFile ? renderAudioPlayer() : null}
-           </View>
-          
-          <ScrollView 
-            style={styles.stepScrollView} 
-            contentContainerStyle={styles.stepScrollContent}
-            showsVerticalScrollIndicator={false}
+      {renderHeader()}
+      
+      <FlatList
+        ref={flatListRef}
+        onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        data={allSlides}
+        horizontal
+        pagingEnabled
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        getItemLayout={(_, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
+        onScroll={(e) => {
+          const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+          if (newIndex !== currentStep) {
+            setCurrentStep(newIndex);
+          }
+        }}
+        scrollEventThrottle={16}
+        renderItem={({ item }) => {
+          if (item.slideType === 'intro') return renderIntroductionItem();
+          return renderStepItem(item as ExerciseStep);
+        }}
+      />
+      
+      {currentStep > 0 && (
+        <View style={styles.fixedFooter}>
+          <TouchableOpacity 
+            style={styles.orangeCircleButton}
+            onPress={handleNextStep}
           >
-            {renderStep(exercise.steps[currentStep])}
-          </ScrollView>
-          
-          <View style={styles.bottomButtonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.bottomNavButton,
-                styles.secondaryBottomButton,
-                currentStep === 0 && styles.disabledButton
-              ]}
-              onPress={handlePreviousStep}
-              disabled={currentStep === 0}
-            >
-              <Text style={[
-                styles.bottomNavButtonText,
-                styles.secondaryBottomButtonText,
-                currentStep === 0 && styles.disabledButtonText
-              ]}>
-                Indietro
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.bottomNavButton, styles.primaryBottomButton]}
-              onPress={handleNextStep}
-              disabled={isCompleting}
-            >
-              <Text style={[styles.bottomNavButtonText, styles.primaryBottomButtonText]}>
-                {currentStep === exercise.steps.length - 1 ? 'Completa' : 'Avanti'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </>
+            <Ionicons 
+              name={
+                (exercise.id === 'respirazione-consapevole' && currentStep === 1) 
+                ? 'arrow-forward' 
+                : (currentStep === allSlides.length - 1 ? "checkmark" : "arrow-forward")
+              } 
+              size={30} 
+              color="white" 
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {showBreathingAnimation && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, elevation: 10 }]}>
+          <BreathingScreen 
+            onAbort={onClose} 
+            onClose={() => setShowBreathingAnimation(false)} 
+            onComplete={handleCompleteExercise} 
+            initialIsPlaying={isPlaying} 
+          />
+        </View>
       )}
     </View>
   );
@@ -652,423 +1023,352 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#edebff',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+  fixedHeader: {
+    height: 100,
     backgroundColor: '#8B7CF6',
-    borderBottomWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 40,
   },
-  leftSection: {
-    width: 40,
+  headerNavigationDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backButton: {
-    padding: 8,
+  headerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 3,
   },
-  closeButton: {
-    padding: 8,
+  headerActiveDot: {
+    backgroundColor: 'white',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 2,
-    overflow: 'hidden',
+  headerInactiveDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
-  progressFill: {
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  slideItem: {
+    width: width,
     height: '100%',
-    backgroundColor: '#4A90E2',
-    borderRadius: 2,
   },
   introContainer: {
     flex: 1,
+    backgroundColor: '#8B7CF6',
   },
   introContentContainer: {
-    paddingBottom: 100, // Spazio per il pulsante ancorato
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 120,
   },
-
   introContent: {
-    padding: 24,
-    paddingTop: 40,
+    alignItems: 'center',
   },
-  durationText: {
-    fontSize: 14,
-    color: '#666666',
+  durationTextWhite: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
     marginBottom: 8,
   },
-  exerciseTitle: {
-    fontSize: 28,
+  exerciseTitleWhite: {
+    color: 'white',
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 20,
-  },
-  introText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
+    textAlign: 'center',
     marginBottom: 24,
   },
-  metaInfo: {
-    flexDirection: 'row',
-    marginBottom: 24,
-  },
-  metaItem: {
-    flex: 1,
-    marginRight: 16,
-  },
-  metaLabel: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  metaValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
+  introTextWhite: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 28,
+    marginBottom: 32,
   },
   section: {
+    width: '100%',
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
+  sectionTitleWhite: {
+    color: 'white',
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 12,
-  },
-  sectionText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
+    marginBottom: 16,
   },
   benefitsList: {
+    width: '100%',
+  },
+  benefitItemWhite: {
+    color: 'white',
+    fontSize: 16,
+    marginBottom: 12,
+    lineHeight: 24,
+  },
+  // Intro v3 Styles
+  introSlideContainer: {
+    width: width,
+    height: '100%',
+    backgroundColor: '#F8F7FF',
+    justifyContent: 'space-between',
+  },
+  introContentScroll: {
+    flex: 1,
+  },
+  introScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 30,
+    paddingBottom: 40,
+  },
+  introDurationText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+    textAlign: 'left',
+  },
+  introTitleText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0D0644',
+    marginBottom: 24,
+    textAlign: 'left',
+  },
+  introDescriptionText: {
+    fontSize: 17,
+    color: '#444',
+    lineHeight: 26,
+    marginBottom: 32,
+    textAlign: 'left',
+  },
+  introSection: {
+    marginBottom: 24,
+  },
+  introSectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'left',
+  },
+  introBenefitsContainer: {
     marginTop: 8,
   },
-  benefitItem: {
-    fontSize: 16,
+  introBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  introBenefitBullet: {
+    fontSize: 18,
+    color: '#666',
+    marginRight: 10,
     lineHeight: 24,
-    color: '#333333',
-    marginBottom: 8,
   },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-  },
-  fixedButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-  },
-  startButton: {
-    backgroundColor: '#FF9500',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FF7A00',
-  },
-  startButtonText: {
-    color: '#FFFFFF',
+  introBenefitText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  stepScrollView: {
+    color: '#666',
+    lineHeight: 24,
     flex: 1,
+  },
+  introActionFooter: {
+    backgroundColor: 'white',
+    padding: 24,
+    paddingBottom: 40,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    width: '100%',
+  },
+  introStartButton: {
+    backgroundColor: '#FF9500',
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  introStartButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   stepContainer: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    backgroundColor: '#8B7CF6',
   },
   stepHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: 20,
   },
-  stepTitle: {
+  stepTitleWhite: {
+    color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    flex: 1,
+    textAlign: 'center',
   },
-  stepCounter: {
-    fontSize: 16,
-    color: '#666666',
-    fontWeight: '600',
-  },
-  stepContent: {
-    flex: 1,
-    marginBottom: 32,
+  contentCard: {
+    backgroundColor: 'transparent',
+    flex: 0.8,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 16,
   },
-  listBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#8B7CF6',
-    marginTop: 6,
+  listBulletPurple: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'white',
+    marginTop: 10,
     marginRight: 12,
   },
-  listText: {
+  listTextCard: {
+    fontSize: 18,
+    color: 'white',
+    lineHeight: 28,
     flex: 1,
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
   },
-  textArea: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+  textAreaContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 16,
     padding: 16,
+  },
+  inputLabelCard: {
     fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    minHeight: 120,
+    color: '#666',
+    marginBottom: 12,
   },
-  inputLabel: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  stepNavigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-  },
-  navButton: {
+  textAreaCard: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    fontSize: 18,
+    color: '#333',
+    lineHeight: 28,
+  },
+  fixedFooter: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    marginHorizontal: 8,
   },
-  primaryButton: {
-    backgroundColor: '#4A90E2',
-  },
-  secondaryButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-  },
-  disabledButton: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E8E8E8',
-  },
-  navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-  },
-  secondaryButtonText: {
-    color: '#333333',
-  },
-  disabledButtonText: {
-    color: '#999999',
-  },
-  exerciseStepHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingTop: 60,
-      paddingBottom: 16,
-      backgroundColor: '#8B7CF6',
-      borderBottomWidth: 0,
-      shadowOpacity: 0,
-      elevation: 0,
-    },
-  stepContentHeader: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    backgroundColor: '#8B7CF6',
-    borderBottomWidth: 0,
-  },
-  navigationDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 16,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
-  },
-  activeDot: {
-    backgroundColor: '#FFFFFF',
-  },
-  inactiveDot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  audioPlayerContainer: {
-    flexDirection: 'row',
+  orangeCircleButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FF9500',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  audioPlayerContainerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  playButtonContainerCard: {
+    width: 56,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 24,
   },
-  skipButton: {
+  playButtonCard: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skipButtonCard: {
+    padding: 8,
+  },
+  successContainer: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  successHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 16,
+    alignItems: 'flex-end',
+  },
+  successContent: {
+    flex: 1,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  skipText: {
-    color: 'white',
-    fontSize: 10,
-    marginTop: 2,
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 12,
   },
-  stepScrollContent: {
-    paddingBottom: 120,
+  successSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
   },
-  bottomButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34,
+  successImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 40,
+  },
+  successQuestion: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  moodContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
   },
-  bottomNavButton: {
-    flex: 1,
+  moodButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  successButtonContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 34,
+  },
+  diaryButton: {
+    backgroundColor: '#FF9500',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginHorizontal: 8,
   },
-  primaryBottomButton: {
-    backgroundColor: '#FF9500',
-  },
-  secondaryBottomButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-  },
-  bottomNavButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  primaryBottomButtonText: {
-    color: '#FFFFFF',
-  },
-  secondaryBottomButtonText: {
-     color: '#333333',
-   },
-   playButtonContainer: {
-     position: 'relative',
-     justifyContent: 'center',
-     alignItems: 'center',
-   },
-   progressCircle: {
-     position: 'absolute',
-   },
-   successContainer: {
-     flex: 1,
-     backgroundColor: '#F8F9FA',
-   },
-   successHeader: {
-     paddingHorizontal: 24,
-     paddingTop: 60,
-     paddingBottom: 16,
-     alignItems: 'flex-end',
-   },
-   successContent: {
-     flex: 1,
-     paddingHorizontal: 24,
-     alignItems: 'center',
-     justifyContent: 'center',
-   },
-   successTitle: {
-     fontSize: 24,
-     fontWeight: 'bold',
-     color: '#1A1A1A',
-     textAlign: 'center',
-     marginBottom: 12,
-   },
-   successSubtitle: {
-     fontSize: 16,
-     color: '#666666',
-     textAlign: 'center',
-     lineHeight: 24,
-     marginBottom: 40,
-   },
-   successImage: {
-     width: 200,
-     height: 200,
-     marginBottom: 40,
-   },
-   successQuestion: {
-     fontSize: 20,
-     fontWeight: '600',
-     color: '#1A1A1A',
-     textAlign: 'center',
-     marginBottom: 24,
-   },
-   moodContainer: {
-     flexDirection: 'row',
-     justifyContent: 'center',
-     alignItems: 'center',
-     marginBottom: 40,
-   },
-   moodButton: {
-     width: 80,
-     height: 80,
-     borderRadius: 40,
-     justifyContent: 'center',
-     alignItems: 'center',
-     marginHorizontal: 10,
-   },
-   successButtonContainer: {
-     paddingHorizontal: 24,
-     paddingBottom: 34,
-   },
-   diaryButton: {
-     backgroundColor: '#FF9500',
-     paddingVertical: 16,
-     borderRadius: 12,
-     alignItems: 'center',
-   },
-   diaryButtonText: {
+  diaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
@@ -1110,6 +1410,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  progressCircle: {
+    position: 'absolute',
   },
 });
 

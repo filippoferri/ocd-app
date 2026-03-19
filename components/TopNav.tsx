@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TopNavProps {
   currentScreen: 'home' | 'diary';
@@ -10,8 +11,9 @@ interface TopNavProps {
 }
 
 export default function TopNav({ currentScreen, onToggle, onAvatarPress, userName }: TopNavProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
       <TouchableOpacity style={styles.avatar} onPress={onAvatarPress}>
         <Ionicons name="person" size={28} color="#666" />
       </TouchableOpacity>
@@ -38,7 +40,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 15,
     backgroundColor: '#F8F9FA',

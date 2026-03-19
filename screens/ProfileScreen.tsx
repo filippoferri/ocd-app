@@ -20,12 +20,12 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
 
   // Calcola il numero totale di attivazioni (ossessioni + compulsioni, escludendo esercizi)
   const totalActivations = userActivities.filter(activity => 
-    !activity.description.includes('Esercizio completato:')
+    !(activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'))
   ).length;
   
   // Calcola il numero totale di esercizi completati
   const totalExercises = userActivities.filter(activity => 
-    activity.description.includes('Esercizio completato:')
+    activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato')
   ).length;
 
   // Verifica se in una data (YYYY-MM-DD locale) è stato completato un esercizio
@@ -33,7 +33,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     return userActivities.some(activity => {
       // Normalizza: prende solo la parte YYYY-MM-DD, sia ISO che locale
       const activityDate = activity.date?.split('T')[0];
-      return activityDate === date && activity.description.includes('Esercizio completato:');
+      return activityDate === date && (activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'));
     });
   };
 

@@ -100,7 +100,7 @@ export default function ActivityDetailScreen({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   
-  const isExercise = activity.description.includes('Esercizio completato:');
+  const isExercise = activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato');
 
   const handleSave = () => {
     if (hasChanges) {
@@ -137,7 +137,7 @@ export default function ActivityDetailScreen({
             <Ionicons name="arrow-back" size={24} color="#1a1a2e" />
           </TouchableOpacity>
           
-          <Text style={styles.headerTitle}>Attivazione</Text>
+          <Text style={styles.headerTitle}>{isExercise ? 'Esercizio' : 'Attivazione'}</Text>
           
           <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
             <Ionicons name="trash-outline" size={24} color="#1a1a2e" />
@@ -151,9 +151,9 @@ export default function ActivityDetailScreen({
             {/* Title */}
             <Text style={styles.title}>
               {isExercise ? (
-                activity.description.includes('Esercizio completato:') 
-                  ? activity.description.match(/Esercizio completato: (.+?)(\.|$)/)?.[1] || 'Esercizio'
-                  : 'Esercizio'
+                activity.description.includes('Esercizio completato: ') 
+                  ? activity.description.match(/Esercizio completato: (.+?)(\.|$)/)?.[1] || activity.symptom || 'Esercizio'
+                  : activity.symptom || 'Esercizio'
               ) : (activity.type === 'ossessione' ? 'Ossessione' : 'Compulsione')}
             </Text>
 
