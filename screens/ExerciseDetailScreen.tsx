@@ -18,7 +18,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Play, Pause, Stop as PhosphorStop, MusicNotesMinus, MusicNotesPlus, ArrowLeft, X } from 'phosphor-react-native';
 import { Audio } from 'expo-av';
-import Svg, { Circle, Path, G, ClipPath, Defs, Rect, Mask, LinearGradient, Stop } from 'react-native-svg';
+import { Asset } from 'expo-asset';
+import Svg, { Circle, Path, G, ClipPath, Defs, Rect, Mask, LinearGradient, Stop, SvgXml, RadialGradient } from 'react-native-svg';
 import { Exercise, ExerciseStep, ExerciseProgress } from '../types/Exercise';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 import authService from '../services/AuthService';
@@ -33,7 +34,7 @@ interface ExerciseDetailScreenProps {
   onNavigateToDiary?: () => void;
 }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const FaceSad = ({ selected }: { selected?: boolean }) => (
   <Svg width={50} height={50} viewBox="0 0 65 64" fill="none">
@@ -520,6 +521,355 @@ const breathingStyles = StyleSheet.create({
 });
 
 
+// ─── Body Scan Screen ──────────────────────────────────────────────────────
+
+interface BodyScanScreenProps {
+  onClose: () => void;
+  onComplete: () => void;
+  onAbort: () => void;
+  initialIsPlaying: boolean;
+}
+
+const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, onAbort, initialIsPlaying }) => {
+  const TOTAL_SECONDS = 480; // 8 minutes
+  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [showExitMenu, setShowExitMenu] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  
+  const scannerY = useRef(new Animated.Value(0)).current;
+  const scannerDotX = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  
+  const timeElapsed = useRef(0);
+  const audioRef = useRef<Audio.Sound | null>(null);
+
+  const headerHeight = 120;
+  const footerHeight = 160;
+  const availableHeight = height - headerHeight - footerHeight;
+  const BODY_IMAGE_WIDTH = width * 0.75;
+  const BODY_IMAGE_HEIGHT = Math.min(availableHeight * 0.85, BODY_IMAGE_WIDTH * 2.1);
+  const SCANNER_LINE_WIDTH = width;
+
+  // Caricamento Audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadAudio = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/audio/body-scan.mp3'),
+          { isLooping: true, volume: 1.0 }
+        );
+        if (!isMounted) { sound.unloadAsync(); return; }
+        audioRef.current = sound;
+        if (isPlaying && musicEnabled) await sound.playAsync();
+      } catch (e) {
+        console.error('Error loading body-scan audio', e);
+      }
+    };
+    loadAudio();
+    return () => {
+      isMounted = false;
+      if (audioRef.current) audioRef.current.unloadAsync();
+    };
+  }, []);
+
+  // Controllo riproduzione audio basato su isPlaying e musicEnabled
+  useEffect(() => {
+    const syncAudio = async () => {
+      if (!audioRef.current) return;
+      try {
+        if (isPlaying && musicEnabled) {
+          await audioRef.current.playAsync();
+        } else {
+          await audioRef.current.pauseAsync();
+        }
+      } catch (e) {
+        console.error('Error syncing body-scan audio', e);
+      }
+    };
+    syncAudio();
+  }, [isPlaying, musicEnabled]);
+
+  // Loop Animazione Luce (sinistra-destra)
+  useEffect(() => {
+    if (isPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scannerDotX, {
+            toValue: 1, duration: 3000, easing: Easing.inOut(Easing.linear), useNativeDriver: true,
+          }),
+          Animated.timing(scannerDotX, {
+            toValue: -1, duration: 3000, easing: Easing.inOut(Easing.linear), useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      scannerDotX.stopAnimation();
+    }
+  }, [isPlaying]);
+
+  // Timer e Animazione Linea (alto-basso)
+  useEffect(() => {
+    let lastTime = Date.now();
+    let frameId: number;
+
+    const tick = () => {
+      if (!isPlaying || isFinishing) return;
+
+      const now = Date.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      timeElapsed.current += delta;
+
+      const secondsLeft = Math.max(0, TOTAL_SECONDS - Math.floor(timeElapsed.current / 1000));
+      setTimeLeft(secondsLeft);
+
+      // Progressione linea: 0 -> 1 su 8 minuti
+      const progress = Math.min(1, timeElapsed.current / (TOTAL_SECONDS * 1000));
+      scannerY.setValue(progress);
+
+      // Fade out audio negli ultimi 5 secondi
+      if (secondsLeft <= 5 && musicEnabled && audioRef.current) {
+        const volume = Math.max(0, secondsLeft / 5);
+        audioRef.current.setVolumeAsync(volume);
+      }
+
+      // Fine esercizio
+      if (timeElapsed.current >= TOTAL_SECONDS * 1000) {
+        setIsFinishing(true);
+        Animated.timing(contentOpacity, {
+          toValue: 0, duration: 2000, useNativeDriver: true,
+        }).start(() => onComplete());
+        return;
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    if (isPlaying) {
+      frameId = requestAnimationFrame(tick);
+    }
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [isPlaying, isFinishing, musicEnabled]);
+
+  const toggleMusic = async () => {
+    const next = !musicEnabled;
+    setMusicEnabled(next);
+    if (!next && audioRef.current) await audioRef.current.pauseAsync();
+    else if (next && audioRef.current && isPlaying) await audioRef.current.playAsync();
+  };
+
+  const handleStop = async () => {
+    if (audioRef.current) await audioRef.current.stopAsync();
+    onComplete();
+  };
+
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+  return (
+    <View style={bodyScanStyles.container}>
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }} pointerEvents={isFinishing ? 'none' : 'auto'}>
+        {/* Header */}
+        <View style={bodyScanStyles.header}>
+          <TouchableOpacity onPress={onClose} style={bodyScanStyles.headerIcon}>
+            <ArrowLeft color="white" size={28} weight="regular" />
+          </TouchableOpacity>
+          <Text style={bodyScanStyles.timeText}>{timeStr}</Text>
+          <TouchableOpacity onPress={() => setShowExitMenu(true)} style={bodyScanStyles.headerIcon}>
+            <X color="white" size={28} weight="regular" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Body + Scanner */}
+        <View style={bodyScanStyles.bodyContainer}>
+          <View style={[bodyScanStyles.bodyWrapper, { width: width, height: BODY_IMAGE_HEIGHT }]}>
+            {/* Immagine del Corpo - Centrata */}
+            <Image 
+              source={require('../assets/exercises/body.png')} 
+              style={{ width: BODY_IMAGE_WIDTH, height: BODY_IMAGE_HEIGHT, resizeMode: 'contain' }} 
+            />
+
+            {/* Linea Scanner e Luce - full width sovrapposta */}
+            <Animated.View 
+              style={[
+                bodyScanStyles.scannerTrack,
+                {
+                  transform: [{
+                    translateY: scannerY.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [BODY_IMAGE_HEIGHT * 0.05, BODY_IMAGE_HEIGHT * 0.95]
+                    })
+                  }]
+                }
+              ]}
+            >
+              {/* Linea Orizzontale al 100% */}
+              <View style={[bodyScanStyles.scannerLine, { width: width }]} />
+              
+              {/* Luce dello Scanner */}
+              <Animated.View
+                style={[
+                  bodyScanStyles.scannerDotContainer,
+                  {
+                    transform: [{
+                      translateX: scannerDotX.interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: [-width / 2 + 20, width / 2 - 20]
+                      })
+                    }]
+                  }
+                ]}
+              >
+                <Image 
+                  source={require('../assets/exercises/scanner.png')} 
+                  style={{ width: 40, height: 40, resizeMode: 'contain' }} 
+                />
+              </Animated.View>
+            </Animated.View>
+          </View>
+        </View>
+
+        {/* Controls */}
+        <View style={bodyScanStyles.controlsContainer}>
+          <TouchableOpacity onPress={toggleMusic} style={bodyScanStyles.secondaryBtn}>
+            {musicEnabled
+              ? <MusicNotesMinus color="white" size={24} weight="fill" />
+              : <MusicNotesPlus color="white" size={24} weight="fill" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsPlaying(!isPlaying)} style={bodyScanStyles.playBtn}>
+            {isPlaying
+              ? <Pause color="#8B7CF6" size={36} weight="fill" />
+              : <Play color="#8B7CF6" size={36} weight="fill" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleStop} style={bodyScanStyles.secondaryBtn}>
+            <PhosphorStop color="white" size={24} weight="fill" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      {/* Exit Modal */}
+      <Modal visible={showExitMenu} transparent animationType="fade">
+        <View style={breathingStyles.modalOverlay}>
+          <View style={breathingStyles.actionSheet}>
+            <View style={breathingStyles.actionSheetGroup}>
+              <TouchableOpacity style={breathingStyles.actionButtonDestructive} onPress={async () => {
+                setShowExitMenu(false);
+                if (audioRef.current) await audioRef.current.stopAsync();
+                onAbort();
+              }}>
+                <Text style={breathingStyles.actionTextDestructive}>Abbandona</Text>
+              </TouchableOpacity>
+              <View style={breathingStyles.actionSeparator} />
+              <TouchableOpacity style={breathingStyles.actionButton} onPress={() => { setShowExitMenu(false); handleStop(); }}>
+                <Text style={breathingStyles.actionText}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[breathingStyles.actionSheetGroup, breathingStyles.actionButton, { marginTop: 8 }]} onPress={() => setShowExitMenu(false)}>
+              <Text style={breathingStyles.actionTextBold}>Cancella</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const bodyScanStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8B7CF6',
+    zIndex: 1000,
+    justifyContent: 'space-between',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    zIndex: 100, // Garantisce cliccabilità
+  },
+  headerIcon: { padding: 8 },
+  timeText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '500',
+  },
+  bodyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  bodyWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerTrack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    width: width,
+  },
+  scannerLine: {
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: 'white',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  scannerDotContainer: {
+    position: 'absolute',
+    top: -20, // Centra l'immagine alta 40 sulla linea alta 1.5
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 60,
+    zIndex: 100, // Garantisce cliccabilità
+  },
+  playBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  secondaryBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+
+// ─── ExerciseDetailScreen ───────────────────────────────────────────────────
+
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   exercise,
   onBack,
@@ -539,6 +889,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [selectedMood, setSelectedMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
   const audioRef = useRef<Audio.Sound | null>(null);
   const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
+  const [showBodyScanAnimation, setShowBodyScanAnimation] = useState(false);
   const breathingScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -564,6 +915,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       setIsPlaying(true);
       return;
     }
+
+    if (exercise.id === 'body-scan' && currentStep === 1) {
+      setShowBodyScanAnimation(true);
+      setIsPlaying(true);
+      return;
+    }
     
     if (currentStep < exercise.steps.length) {
       flatListRef.current?.scrollToOffset({ offset: width * (currentStep + 1), animated: true });
@@ -580,6 +937,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       audioRef.current = null;
     }
     setShowBreathingAnimation(false);
+    setShowBodyScanAnimation(false);
     
     if (currentStep > 0) {
       flatListRef.current?.scrollToOffset({ offset: width * (currentStep - 1), animated: true });
@@ -781,6 +1139,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     } finally {
       setIsCompleting(false);
       setShowBreathingAnimation(false);
+      setShowBodyScanAnimation(false);
     }
   };
 
@@ -788,7 +1147,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     if (currentStep === 0) return null;
     
     let totalDots = exercise.steps.length;
-    if (exercise.id === 'respirazione-consapevole') totalDots += 1;
+    if (exercise.id === 'respirazione-consapevole' || exercise.id === 'body-scan') totalDots += 1;
     
     return (
       <View style={styles.headerNavigationDots}>
@@ -995,7 +1354,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
           >
             <Ionicons 
               name={
-                (exercise.id === 'respirazione-consapevole' && currentStep === 1) 
+                ((exercise.id === 'respirazione-consapevole' || exercise.id === 'body-scan') && currentStep === 1) 
                 ? 'arrow-forward' 
                 : (currentStep === allSlides.length - 1 ? "checkmark" : "arrow-forward")
               } 
@@ -1013,6 +1372,17 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
             onClose={() => setShowBreathingAnimation(false)} 
             onComplete={handleCompleteExercise} 
             initialIsPlaying={isPlaying} 
+          />
+        </View>
+      )}
+
+      {showBodyScanAnimation && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, elevation: 10 }]}>
+          <BodyScanScreen
+            onAbort={onClose}
+            onClose={() => setShowBodyScanAnimation(false)}
+            onComplete={handleCompleteExercise}
+            initialIsPlaying={isPlaying}
           />
         </View>
       )}

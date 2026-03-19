@@ -1,23 +1,14 @@
 export const exerciseImages = {
   'body-scan': `<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="200" height="200" rx="16" fill="#E8F4FD"/>
-    
-    <!-- Body silhouette -->
-    <path d="M100 40C105 40 110 45 110 50V60C115 60 120 65 120 70V120C120 130 115 140 110 150V170C110 175 105 180 100 180C95 180 90 175 90 170V150C85 140 80 130 80 120V70C80 65 85 60 90 60V50C90 45 95 40 100 40Z" fill="#4A90E2" opacity="0.3"/>
-    
-    <!-- Meditation waves -->
-    <circle cx="100" cy="100" r="60" stroke="#4A90E2" stroke-width="2" fill="none" opacity="0.4"/>
-    <circle cx="100" cy="100" r="80" stroke="#4A90E2" stroke-width="1" fill="none" opacity="0.2"/>
-    <circle cx="100" cy="100" r="100" stroke="#4A90E2" stroke-width="1" fill="none" opacity="0.1"/>
-    
-    <!-- Focus points -->
-    <circle cx="100" cy="60" r="3" fill="#4A90E2"/>
-    <circle cx="100" cy="100" r="3" fill="#4A90E2"/>
-    <circle cx="100" cy="140" r="3" fill="#4A90E2"/>
-    
-    <!-- Breathing indicator -->
-    <path d="M100 30L105 35L100 40L95 35Z" fill="#7B68EE"/>
-    <path d="M100 160L105 165L100 170L95 165Z" fill="#7B68EE"/>
+    <rect width="200" height="200" rx="24" fill="#F0EEFF"/>
+    <path d="M100 45C108 45 115 52 115 60V75C125 75 130 85 130 95V145C130 155 125 165 115 175V185C115 190 110 195 100 195C90 195 85 190 85 185V175C75 165 70 155 70 145V95C70 85 75 75 85 75V60C85 52 92 45 100 45Z" fill="#8B7CF6" opacity="0.3"/>
+    <rect x="60" y="100" width="80" height="2" fill="#8B7CF6" opacity="0.8">
+      <animate attributeName="y" values="60;160;60" dur="4s" repeatCount="indefinite" />
+    </rect>
+    <circle cx="100" cy="100" r="6" fill="#8B7CF6">
+      <animate attributeName="cy" values="60;160;60" dur="4s" repeatCount="indefinite" />
+      <animate attributeName="cx" values="70;130;70" dur="2s" repeatCount="indefinite" />
+    </circle>
   </svg>`,
   
   'contrasta-compulsione': `<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">

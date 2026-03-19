@@ -6,41 +6,23 @@ class ExerciseService {
     {
       id: 'body-scan',
       name: 'Body Scan',
-      introText: 'Il Body Scan è una tecnica di mindfulness che ti aiuta a sviluppare consapevolezza del tuo corpo e delle sensazioni fisiche. Attraverso questa pratica, imparerai a osservare il tuo corpo senza giudizio, riducendo l\'ansia e migliorando la connessione mente-corpo.',
+      introText: 'Il Body Scan è una pratica di mindfulness che ti guida in un viaggio di consapevolezza attraverso tutto il corpo. Con un sottofondo musicale rilassante, uno scanner visivo ti accompagnerà dall\'alto verso il basso, aiutandoti a portare attenzione a ogni parte del corpo e a rilasciare tensioni accumulate.',
       benefitsText: '• Riduce l\'ansia e lo stress\n• Migliora la consapevolezza corporea\n• Favorisce il rilassamento profondo\n• Aiuta a riconoscere le tensioni fisiche\n• Sviluppa la capacità di osservazione senza giudizio',
-      objectiveText: 'Sviluppare consapevolezza corporea e ridurre l\'ansia',
-      duration: 15,
+      objectiveText: 'Sviluppare consapevolezza corporea e ridurre le tensioni fisiche',
+      duration: 8,
       image: './assets/exercises/body-scan.png',
       steps: [
         {
           id: 'preparation',
           type: 'default',
-          title: 'Preparazione',
+          title: 'Azioni preparatorie',
           content: [
-            'Trova una posizione comoda, seduto o sdraiato',
-            'Chiudi gli occhi o abbassa lo sguardo',
-            'Fai 3 respiri profondi per rilassarti',
-            'Porta l\'attenzione al momento presente'
+            'Trova un luogo tranquillo dove non sarai disturbato per i prossimi 8 minuti',
+            'Siediti comodamente o sdraiati, con la schiena supportata',
+            'Chiudi gli occhi e fai 3 respiri profondi per rilassarti',
+            'Segui lo scanner visivo: porta l\'attenzione a ogni zona del corpo che evidenzia',
+            'Osserva le sensazioni senza giudicarle — tensione, calore, formicoli, nulla: tutto va bene'
           ]
-        },
-        {
-          id: 'body-scan-practice',
-          type: 'default',
-          title: 'Pratica del Body Scan',
-          content: [
-            'Inizia dalla sommità della testa',
-            'Scendi lentamente verso il viso e il collo',
-            'Continua con spalle, braccia e mani',
-            'Prosegui con petto, addome e schiena',
-            'Termina con bacino, gambe e piedi',
-            'Osserva ogni sensazione senza giudicare'
-          ]
-        },
-        {
-          id: 'reflection',
-          type: 'withtextarea',
-          title: 'Riflessione',
-          placeholder: 'Descrivi cosa hai notato durante la pratica. Quali sensazioni hai percepito? Come ti senti ora?'
         }
       ],
       category: 'mindfulness',
