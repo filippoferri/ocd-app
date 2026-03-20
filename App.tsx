@@ -460,8 +460,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   bottomNavContainer: {
     position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
