@@ -981,7 +981,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         if (currentStepData.audioFile) {
           const audioMap = {
             './assets/audio/breathing-guide.mp3': require('../assets/audio/breathing-guide.mp3'),
-            './assets/audio/meditation-step1-preparation.mp3': require('../assets/audio/meditation-step1-preparation.mp3'),
+            './assets/audio/body-scan.mp3': require('../assets/audio/body-scan.mp3'),
             './assets/audio/meditation-step2-practice.mp3': require('../assets/audio/meditation-step2-practice.mp3'),
             './assets/audio/meditation-guided.mp3': require('../assets/audio/meditation-guided.mp3'),
           };
