@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Modal, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
@@ -10,6 +11,7 @@ interface Step3Props {
 }
 
 export default function Step3({ onNext, onBack, onClose }: Step3Props) {
+  const insets = useSafeAreaInsets();
   const [description, setDescription] = useState('');
   const [selectedType, setSelectedType] = useState<'ossessione' | 'compulsione' | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -23,7 +25,7 @@ export default function Step3({ onNext, onBack, onClose }: Step3Props) {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: 'white',

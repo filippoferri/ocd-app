@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import AuthService from '../services/AuthService';
 
@@ -72,6 +73,7 @@ const intensityColors: { [key: string]: string } = {
 };
 
 function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActivityPress, activeTab, testCompleted, testResult, onRetakeTest, userActivities, onProfilePress }: DiaryScreenProps) {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ActivationEntry | null>(null);
@@ -411,7 +413,7 @@ function DiaryScreen({ onClose, onHomePress, onExplorePress, onAddPress, onActiv
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity 
           style={styles.dateButton}
           onPress={() => setShowCalendar(true)}
@@ -518,6 +520,7 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     backgroundColor: '#F8F9FA',
+    // paddingTop handled dynamically
   },
   editButton: {
     padding: 4,

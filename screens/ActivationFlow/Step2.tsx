@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
 
@@ -32,6 +33,7 @@ const intensityData: { level: IntensityLevel; label: string }[] = [
 ];
 
 export default function Step2({ onNext, onBack, onClose }: Step2Props) {
+  const insets = useSafeAreaInsets();
   const [selectedIntensity, setSelectedIntensity] = useState<IntensityLevel>('media');
 
   const handleContinue = () => {
@@ -40,7 +42,7 @@ export default function Step2({ onNext, onBack, onClose }: Step2Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: intensityColors[selectedIntensity] }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -99,7 +101,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: 'white',

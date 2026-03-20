@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ButtonNavProps {
   label: string;
@@ -8,8 +9,10 @@ interface ButtonNavProps {
 }
 
 export default function ButtonNav({ label, onPress, disabled = false }: ButtonNavProps) {
+  const insets = useSafeAreaInsets();
+  
   return (
-    <View style={styles.footer}>
+    <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom + 15) }]}>
       <TouchableOpacity 
         style={[
           styles.button,
@@ -32,7 +35,6 @@ export default function ButtonNav({ label, onPress, disabled = false }: ButtonNa
 const styles = StyleSheet.create({
   footer: {
     padding: 20,
-    paddingBottom: 40,
     backgroundColor: 'white',
   },
   button: {

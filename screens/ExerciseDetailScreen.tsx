@@ -16,6 +16,7 @@ import {
   Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Play, Pause, Stop as PhosphorStop, MusicNotesMinus, MusicNotesPlus, ArrowLeft, X } from 'phosphor-react-native';
 import { Audio } from 'expo-av';
 import { Asset } from 'expo-asset';
@@ -119,6 +120,7 @@ const BreathingScreen: React.FC<BreathingScreenProps> = ({
   onAbort,
   initialIsPlaying,
 }) => {
+  const insets = useSafeAreaInsets();
   const [timeLeft, setTimeLeft] = useState(180); // 3 minutes
   const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
   const [musicEnabled, setMusicEnabled] = useState(true);
@@ -324,7 +326,7 @@ const BreathingScreen: React.FC<BreathingScreenProps> = ({
   return (
     <View style={breathingStyles.container}>
       <Animated.View style={{ flex: 1, opacity: contentOpacity }} pointerEvents={isFinishing ? 'none' : 'auto'}>
-        <View style={breathingStyles.header}>
+        <View style={[breathingStyles.header, { paddingTop: insets.top + 20 }]}>
           <TouchableOpacity onPress={onClose} style={breathingStyles.headerIcon}>
           <ArrowLeft color="white" size={28} weight="regular" />
         </TouchableOpacity>
@@ -372,7 +374,7 @@ const BreathingScreen: React.FC<BreathingScreenProps> = ({
         <Animated.Text style={[breathingStyles.phaseText, { opacity: textFadeAnim }]}>{phaseText}</Animated.Text>
       </View>
       
-      <View style={breathingStyles.controlsContainer}>
+      <View style={[breathingStyles.controlsContainer, { paddingBottom: Math.max(40, insets.bottom + 20) }]}>
         <TouchableOpacity onPress={toggleMusic} style={breathingStyles.secondaryBtn}>
           {musicEnabled ? <MusicNotesMinus color="white" size={24} weight="fill" /> : <MusicNotesPlus color="white" size={24} weight="fill" />}
         </TouchableOpacity>
@@ -428,7 +430,7 @@ const breathingStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    // paddingTop removed from here, handled dynamically
   },
   headerIcon: {
     padding: 8,
@@ -495,7 +497,6 @@ const breathingStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 60,
   },
   playBtn: {
     width: 80,
@@ -531,6 +532,7 @@ interface BodyScanScreenProps {
 }
 
 const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, onAbort, initialIsPlaying }) => {
+  const insets = useSafeAreaInsets();
   const TOTAL_SECONDS = 480; // 8 minutes
   const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
   const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
@@ -677,7 +679,7 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
     <View style={bodyScanStyles.container}>
       <Animated.View style={{ flex: 1, opacity: contentOpacity }} pointerEvents={isFinishing ? 'none' : 'auto'}>
         {/* Header */}
-        <View style={bodyScanStyles.header}>
+        <View style={[bodyScanStyles.header, { paddingTop: insets.top + 20 }]}>
           <TouchableOpacity onPress={onClose} style={bodyScanStyles.headerIcon}>
             <ArrowLeft color="white" size={28} weight="regular" />
           </TouchableOpacity>
@@ -737,7 +739,7 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
         </View>
 
         {/* Controls */}
-        <View style={bodyScanStyles.controlsContainer}>
+        <View style={[bodyScanStyles.controlsContainer, { paddingBottom: Math.max(40, insets.bottom + 20) }]}>
           <TouchableOpacity onPress={toggleMusic} style={bodyScanStyles.secondaryBtn}>
             {musicEnabled
               ? <MusicNotesMinus color="white" size={24} weight="fill" />
@@ -793,7 +795,7 @@ const bodyScanStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    // paddingTop removed from here, handled dynamically
     zIndex: 100, // Garantisce cliccabilità
   },
   headerIcon: { padding: 8 },
@@ -841,7 +843,6 @@ const bodyScanStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 60,
     zIndex: 100, // Garantisce cliccabilità
   },
   playBtn: {
@@ -877,6 +878,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   onComplete,
   onNavigateToDiary,
 }) => {
+  const insets = useSafeAreaInsets();
   const { setCurrentMood } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
@@ -1165,7 +1167,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   };
 
   const renderIntroductionItem = () => (
-    <View style={[styles.introSlideContainer, { minHeight: listHeight > 0 ? listHeight : '100%' }]}>
+    <View style={[styles.introSlideContainer, listHeight > 0 && { height: listHeight }]}>
       <ScrollView 
         style={styles.introContentScroll} 
         contentContainerStyle={styles.introScrollContent}
@@ -1189,7 +1191,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         </View>
       </ScrollView>
       
-      <View style={styles.introActionFooter}>
+      <View style={[styles.introActionFooter, { paddingBottom: Math.max(24, insets.bottom + 10) }]}>
         <TouchableOpacity style={styles.introStartButton} onPress={handleStartExercise}>
           <Text style={styles.introStartButtonText}>INIZIA</Text>
         </TouchableOpacity>
@@ -1198,7 +1200,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   );
 
   const renderStepItem = (step: ExerciseStep) => (
-    <View style={[styles.slideItem, { minHeight: listHeight > 0 ? listHeight : '100%' }]}>
+    <View style={[styles.slideItem, listHeight > 0 && { height: listHeight }]}>
       <View style={styles.stepContainer}>
         <View style={styles.stepHeader}>
           <Text style={styles.stepTitleWhite}>{step.title}</Text>
@@ -1239,7 +1241,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   );
 
   const renderHeader = () => (
-    <View style={styles.fixedHeader}>
+    <View style={[styles.fixedHeader, { paddingTop: insets.top + 15, paddingBottom: 15 }]}>
       <View style={styles.headerIconButton}>
         {currentStep > 0 && (
           <TouchableOpacity 
@@ -1347,7 +1349,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       />
       
       {currentStep > 0 && (
-        <View style={styles.fixedFooter}>
+        <View style={[styles.fixedFooter, { bottom: Math.max(34, insets.bottom + 10) }]}>
           <TouchableOpacity 
             style={styles.orangeCircleButton}
             onPress={handleNextStep}
@@ -1396,13 +1398,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#edebff',
   },
   fixedHeader: {
-    height: 100,
     backgroundColor: '#8B7CF6',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 40,
+    // paddingTop and height removed from here, handled dynamically
   },
   headerNavigationDots: {
     flexDirection: 'row',

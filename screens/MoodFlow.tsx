@@ -7,6 +7,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Svg, Path, Circle } from 'react-native-svg';
 
 const FaceSad = ({ selected }: { selected: boolean }) => (
@@ -76,6 +77,7 @@ const moodConfig = {
 };
 
 export default function MoodFlow({ visible, onClose, onSaveMood }: MoodFlowProps) {
+  const insets = useSafeAreaInsets();
   const [selectedMood, setSelectedMood] = useState<MoodType>(null);
 
   const handleMoodSelect = (mood: 'sad' | 'neutral' | 'happy') => {
@@ -103,7 +105,7 @@ export default function MoodFlow({ visible, onClose, onSaveMood }: MoodFlowProps
       onRequestClose={handleClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
           <TouchableOpacity onPress={handleClose} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
@@ -138,7 +140,7 @@ export default function MoodFlow({ visible, onClose, onSaveMood }: MoodFlowProps
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom + 15) }]}>
           <TouchableOpacity
             style={[
               styles.saveButton,
@@ -172,7 +174,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    // paddingTop handled dynamically
     paddingBottom: 20,
   },
   backButton: {
@@ -216,7 +218,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    backgroundColor: '#F8F9FA',
   },
   saveButton: {
     backgroundColor: '#FF8C42',

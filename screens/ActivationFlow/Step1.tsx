@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Icons from 'phosphor-react-native';
 import { 
   Plus,
@@ -51,6 +52,7 @@ const AVAILABLE_ICONS = [
 ];
 
 export default function Step1({ onNext, onClose, onBack }: Step1Props) {
+  const insets = useSafeAreaInsets();
   const [selectedSymptom, setSelectedSymptom] = useState<string>('');
   const [customSymptoms, setCustomSymptoms] = useState<Array<{id: string, label: string, iconName: string}>>([]);
   
@@ -206,7 +208,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <View style={styles.leftSection}>
           {onBack && (
             <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -548,7 +550,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: 'white',

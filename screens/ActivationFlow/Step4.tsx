@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path, Circle, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import ExerciseServiceAdapter from '../../services/ExerciseServiceAdapter';
@@ -94,6 +95,7 @@ const getMoodColor = (mood: 'bad' | 'neutral' | 'good') => {
 };
 
 export default function Step4({ onFinish, activationData, onOpenExercise }: Step4Props) {
+  const insets = useSafeAreaInsets();
   const { date, time, symptoms, intensity, description, type } = activationData;
   const [selectedMood, setSelectedMood] = useState<'bad' | 'neutral' | 'good' | null>(null);
 
@@ -131,7 +133,7 @@ export default function Step4({ onFinish, activationData, onOpenExercise }: Step
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
         <View style={styles.successIcon}>
           <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
         </View>
@@ -186,7 +188,7 @@ export default function Step4({ onFinish, activationData, onOpenExercise }: Step
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom + 15) }]}>
         <TouchableOpacity style={styles.diaryButton} onPress={onFinish}>
           <Text style={styles.diaryButtonText}>TORNA ALLA HOME</Text>
         </TouchableOpacity>
@@ -203,7 +205,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 60,
+    // paddingTop handled dynamically
     alignItems: 'center',
   },
   successIcon: {
@@ -294,7 +296,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
-    paddingBottom: 40,
   },
   diaryButton: {
     backgroundColor: '#8B7CF6',

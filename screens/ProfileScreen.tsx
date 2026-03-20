@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../services/AuthService';
 import { UserActivity } from '../types/Activity';
@@ -16,6 +17,7 @@ interface ProfileScreenProps {
 }
 
 export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding }: ProfileScreenProps) {
+  const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   
   // Background shift when settings modal is open
@@ -81,7 +83,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     return (
       <Modal visible={showSettings} animationType="slide" presentationStyle="fullScreen">
         <View style={styles.settingsContainer}>
-          <View style={styles.settingsHeader}>
+          <View style={[styles.settingsHeader, { paddingTop: insets.top + 20 }]}>
             <View style={{ width: 24 }} />
             <Text style={styles.settingsTitle}>General Settings</Text>
             <TouchableOpacity onPress={() => setShowSettings(false)}>
@@ -175,7 +177,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.mainWrapper, { transform: [{ translateY: backgroundShiftAnim }] }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={onClose}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -283,7 +285,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -423,7 +425,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
