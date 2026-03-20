@@ -47,17 +47,30 @@ function MainApp() {
 
   // Background animation for parallax effect
   const { width, height } = Dimensions.get('window');
-  const backgroundSlideAnim = useRef(new Animated.Value(0)).current;
+  const backgroundShiftX = useRef(new Animated.Value(0)).current;
+  const backgroundShiftY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const shouldSlide = showActivityDetail || showExerciseDetail;
-    Animated.timing(backgroundSlideAnim, {
-      toValue: shouldSlide ? -height * 0.08 : 0, // Shifting 8% upwards
-      duration: shouldSlide ? 350 : 300,
-      easing: shouldSlide ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
+    // Determine screen shift based on which modal is shown
+    const isHorizontal = showActivityDetail || showProfile;
+    const isVertical = showExerciseDetail || showActivationFlow || showMoodFlow || (currentUser !== null && isLoading === false && onboardingCompleted === false);
+    
+    // Horizontal shift (Left) for right-to-left modals
+    Animated.timing(backgroundShiftX, {
+      toValue: isHorizontal ? -width * 0.08 : 0, 
+      duration: isHorizontal ? 350 : 300,
+      easing: isHorizontal ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
       useNativeDriver: true,
     }).start();
-  }, [showActivityDetail, showExerciseDetail]);
+
+    // Vertical shift (Up) for bottom-to-top modals
+    Animated.timing(backgroundShiftY, {
+      toValue: isVertical ? -height * 0.08 : 0,
+      duration: isVertical ? 350 : 300,
+      easing: isVertical ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
+      useNativeDriver: true,
+    }).start();
+  }, [showActivityDetail, showExerciseDetail, showActivationFlow, showProfile, showMoodFlow, onboardingCompleted, currentUser, isLoading]);
 
 
 
@@ -247,7 +260,7 @@ function MainApp() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.mainWrapper, { transform: [{ translateY: backgroundSlideAnim }] }]}>
+      <Animated.View style={[styles.mainWrapper, { transform: [{ translateX: backgroundShiftX }, { translateY: backgroundShiftY }] }]}>
         <StatusBar style="dark" />
       
         <View style={styles.topNavContainer}>
@@ -373,10 +386,10 @@ function MainApp() {
           />
         </SlideModal>
 
-        <Modal
+        <SlideModal
           visible={showProfile}
-          animationType="slide"
-          presentationStyle="fullScreen"
+          onClose={handleCloseProfile}
+          direction="horizontal"
         >
           <ProfileScreen 
             onClose={handleCloseProfile}
@@ -393,7 +406,7 @@ function MainApp() {
             }}
             onResetOnboarding={handleResetOnboarding}
           />
-        </Modal>
+        </SlideModal>
 
         <MoodFlow
           visible={showMoodFlow}

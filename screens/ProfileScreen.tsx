@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../services/AuthService';
 import { UserActivity } from '../types/Activity';
@@ -17,6 +17,19 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding }: ProfileScreenProps) {
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Background shift when settings modal is open
+  const backgroundShiftAnim = useRef(new Animated.Value(0)).current;
+  const { height } = Dimensions.get('window');
+
+  useEffect(() => {
+    Animated.timing(backgroundShiftAnim, {
+      toValue: showSettings ? -height * 0.08 : 0,
+      duration: showSettings ? 350 : 300,
+      easing: showSettings ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
+      useNativeDriver: true,
+    }).start();
+  }, [showSettings]);
 
   // Calcola il numero totale di attivazioni (ossessioni + compulsioni, escludendo esercizi)
   const totalActivations = userActivities.filter(activity => 
@@ -69,11 +82,11 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
       <Modal visible={showSettings} animationType="slide" presentationStyle="fullScreen">
         <View style={styles.settingsContainer}>
           <View style={styles.settingsHeader}>
-            <TouchableOpacity onPress={() => setShowSettings(false)}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.settingsTitle}>General Settings</Text>
             <View style={{ width: 24 }} />
+            <Text style={styles.settingsTitle}>General Settings</Text>
+            <TouchableOpacity onPress={() => setShowSettings(false)}>
+              <Ionicons name="close" size={28} color="white" />
+            </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.settingsContent}>
@@ -161,7 +174,8 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <Animated.View style={[styles.mainWrapper, { transform: [{ translateY: backgroundShiftAnim }] }]}>
+        <View style={styles.header}>
         <TouchableOpacity onPress={onClose}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -251,7 +265,8 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
         )}
       </ScrollView>
 
-      {renderSettings()}
+        {renderSettings()}
+      </Animated.View>
     </View>
   );
 }
@@ -260,6 +275,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#8B7CF6',
+  },
+  mainWrapper: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
