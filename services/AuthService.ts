@@ -260,14 +260,19 @@ class AuthService {
 
   // ---------- Onboarding (Profile) ----------
 
-  async hasCompletedOnboarding(): Promise<boolean> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return false;
+  async hasCompletedOnboarding(userId?: string): Promise<boolean> {
+    let id = userId;
+    
+    if (!id) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return false;
+      id = session.user.id;
+    }
 
     const { data, error } = await supabase
       .from('profiles')
       .select('onboarding_completed')
-      .eq('id', session.user.id)
+      .eq('id', id)
       .single();
 
     if (error || !data) return false;

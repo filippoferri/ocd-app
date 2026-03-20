@@ -41,7 +41,6 @@ function MainApp() {
   const [selectedActivity, setSelectedActivity] = useState<ActivationEntry | null>(null);
   const [diaryRefreshKey, setDiaryRefreshKey] = useState(0);
   const [showMoodFlow, setShowMoodFlow] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
@@ -60,14 +59,7 @@ function MainApp() {
     }).start();
   }, [showActivityDetail, showExerciseDetail]);
 
-  // Show Onboarding if not completed and authenticated
-  useEffect(() => {
-    if (currentUser && !isLoading && !onboardingCompleted) {
-      setShowOnboarding(true);
-    } else {
-      setShowOnboarding(false);
-    }
-  }, [currentUser, isLoading, onboardingCompleted]);
+
 
 
   const handleHomePress = () => {
@@ -186,7 +178,6 @@ function MainApp() {
   const handleLocalResetOnboarding = async () => {
     await handleResetOnboarding();
     setShowProfile(false);
-    setShowOnboarding(true);
   };
 
   const handleExercisePress = (exercise: Exercise) => {
@@ -411,7 +402,7 @@ function MainApp() {
         />
 
         <Modal
-          visible={showOnboarding}
+          visible={currentUser !== null && isLoading === false && onboardingCompleted === false}
           animationType="slide"
           presentationStyle="fullScreen"
         >

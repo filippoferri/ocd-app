@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import AuthService, { User, OnboardingData } from '../services/AuthService';
 import { UserActivity } from '../types/Activity';
@@ -11,7 +11,7 @@ interface AuthContextData {
   testCompleted: boolean;
   testResult: string | null;
   currentMood: 'sad' | 'neutral' | 'happy' | null;
-  onboardingCompleted: boolean;
+  onboardingCompleted: boolean | null;
   
   handleAuthSuccess: (user: User) => Promise<void>;
   handleLogout: () => Promise<void>;
@@ -19,7 +19,7 @@ interface AuthContextData {
   setTestCompleted: (completed: boolean) => void;
   setTestResult: (result: string | null) => void;
   setCurrentMood: (mood: 'sad' | 'neutral' | 'happy' | null) => void;
-  setOnboardingCompleted: (completed: boolean) => void;
+  setOnboardingCompleted: (completed: boolean | null) => void;
   handleOnboardingComplete: (data: OnboardingData) => Promise<void>;
   handleResetOnboarding: () => Promise<void>;
 }
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [currentMood, setCurrentMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   const checkTestStatus = (activities: UserActivity[]) => {
     const testActivities = activities.filter(a => a.type === 'test');
@@ -75,15 +75,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const loadUserData = async () => {
-    console.log('🔄 AuthContext: Caricamento dati utente...');
+  const loadingUserIds = useRef<Set<string>>(new Set());
+
+  const loadUserData = async (userId: string) => {
+    if (loadingUserIds.current.has(userId)) {
+      console.log('⏳ AuthContext: Caricamento già in corso per:', userId);
+      return;
+    }
+    
+    loadingUserIds.current.add(userId);
+    console.log('🔄 AuthContext: Caricamento dati utente per:', userId);
     try {
-      const activities = await AuthService.getUserActivities();
-      console.log('✅ AuthContext: Attività caricate:', activities.length);
+      // In parallelo per velocità
+      const [activities, completed] = await Promise.all([
+        AuthService.getUserActivities(),
+        AuthService.hasCompletedOnboarding(userId)
+      ]);
+
+      console.log('✅ AuthContext: Dati caricati. Onboarding:', completed);
       setUserActivities(activities);
-      
-      const completed = await AuthService.hasCompletedOnboarding();
-      console.log('✅ AuthContext: Onboarding completato:', completed);
       setOnboardingCompleted(completed);
       
       if (completed) {
@@ -94,19 +104,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error('❌ AuthContext: Errore nel caricamento dati utente:', error);
+    } finally {
+      loadingUserIds.current.delete(userId);
     }
   };
 
   const handleAuthSuccess = async (user: User) => {
     setCurrentUser(user);
-    await loadUserData();
+    await loadUserData(user.id);
   };
 
   const handleLogout = async () => {
     await AuthService.logout();
     setCurrentUser(null);
     setUserActivities([]);
-    setOnboardingCompleted(false);
+    setOnboardingCompleted(null);
     setTestCompleted(false);
     setTestResult(null);
     setCurrentMood(null);
@@ -142,7 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (user) {
           console.log('✅ AuthContext: Utente trovato:', user.email);
           setCurrentUser(user);
-          loadUserData(); // Non attendiamo il caricamento dati per non bloccare la UI
+          await loadUserData(user.id); // Attendiamo il caricamento dati
         } else {
           console.log('ℹ️ AuthContext: Nessuna sessione attiva');
         }
@@ -168,13 +180,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           createdAt: session.user.created_at,
         };
         setCurrentUser(mappedUser);
-        loadUserData(); 
+        await loadUserData(session.user.id); 
         setIsLoading(false);
       } else if (event === 'SIGNED_OUT') {
         console.log('ℹ️ AuthContext: Utente disconnesso');
         setCurrentUser(null);
         setUserActivities([]);
-        setOnboardingCompleted(false);
+        setOnboardingCompleted(null);
         setTestCompleted(false);
         setTestResult(null);
         setCurrentMood(null);
