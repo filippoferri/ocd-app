@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
+import OnboardingHeader from '../../components/OnboardingHeader';
 
 interface Step8Props {
   onNext: (fragilityLevel: number) => void;
   onBack: () => void;
 }
-
 
 export default function Step8({ onNext, onBack }: Step8Props) {
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
@@ -20,12 +19,7 @@ export default function Step8({ onNext, onBack }: Step8Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.placeholder} />
-      </View>
+      <OnboardingHeader onBack={onBack} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
@@ -33,7 +27,7 @@ export default function Step8({ onNext, onBack }: Step8Props) {
           
           <View style={styles.imageContainer}>
             <Image 
-              source={require('../../assets/onboarding/onboarding-8.png')} 
+              source={require('../../assets/onboarding/onboarding-7.png')} 
               style={styles.image}
               resizeMode="contain"
             />
@@ -77,25 +71,7 @@ export default function Step8({ onNext, onBack }: Step8Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    width: 40,
-    height: 40,
+    backgroundColor: '#f8f7ff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -106,7 +82,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     alignItems: 'center',
-    paddingTop: 40,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 24,

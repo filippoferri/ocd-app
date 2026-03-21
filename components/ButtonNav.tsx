@@ -35,7 +35,7 @@ export default function ButtonNav({ label, onPress, disabled = false }: ButtonNa
 const styles = StyleSheet.create({
   footer: {
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
   },
   button: {
     backgroundColor: '#FF9500',

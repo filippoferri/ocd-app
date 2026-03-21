@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, View, TextInput, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import ButtonNav from '../../components/ButtonNav';
+import OnboardingHeader from '../../components/OnboardingHeader';
 
 interface Step5Props {
   onNext: (age: number) => void;
@@ -25,12 +25,7 @@ export default function Step5({ onNext, onBack }: Step5Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.placeholder} />
-      </View>
+      <OnboardingHeader onBack={onBack} />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -40,16 +35,8 @@ export default function Step5({ onNext, onBack }: Step5Props) {
         <View style={styles.content}>
           <Text style={styles.title}>La tua età</Text>
           
-          <View style={styles.imageContainer}>
-            <Image 
-              source={require('../../assets/onboarding/onboarding-5.png')} 
-              style={styles.image}
-              resizeMode="contain"
-            />
-          </View>
-          
           <View style={styles.inputContainer}>
-            <Text style={styles.helperText}>Inserisci la tua età</Text>
+            <Text style={styles.helperText}>Inserisci i tuoi anni</Text>
             <TextInput
               style={styles.input}
               value={age}
@@ -76,25 +63,7 @@ export default function Step5({ onNext, onBack }: Step5Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    width: 40,
-    height: 40,
+    backgroundColor: '#f8f7ff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -104,12 +73,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     alignItems: 'center',
-    paddingTop: 40,
+    justifyContent: 'center',
     minHeight: 400,
   },
   buttonContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     backgroundColor: '#F8F9FA',
   },
   title: {
@@ -117,18 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 40,
-    minHeight: 80,
-    textAlignVertical: 'center',
-  },
-  imageContainer: {
-    width: 200,
-    height: 200,
-    marginBottom: 60,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
+    marginBottom: 16,
   },
   inputContainer: {
     width: '100%',

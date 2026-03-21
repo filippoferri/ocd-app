@@ -183,10 +183,12 @@ function MainApp() {
   };
 
   const handleLocalOnboardingComplete = async (onboardingData: OnboardingData) => {
-    await handleOnboardingComplete(onboardingData);
+    // Se l'utente vuole il test DOC, impostiamo lo schermo prima di chiudere l'onboarding
     if (onboardingData.wantsOCDTest) {
       setCurrentScreen('OCDTest');
     }
+    
+    await handleOnboardingComplete(onboardingData);
   };
 
   const handleLocalResetOnboarding = async () => {
@@ -282,7 +284,10 @@ function MainApp() {
           )}
         </View>
         
-        <View style={[styles.contentContainer, { paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? insets.top + 85 : 0 }]}>
+        <View style={[styles.contentContainer, { 
+          paddingTop: ((currentScreen === 'home' || currentScreen === 'diary') && activeTab === 'home') ? insets.top + 85 : 0,
+          paddingBottom: currentScreen === 'OCDTest' ? 0 : 80
+        }]}>
             {currentScreen === 'home' && activeTab === 'home' && (
               <HomePage
                 key={homeRefreshKey}

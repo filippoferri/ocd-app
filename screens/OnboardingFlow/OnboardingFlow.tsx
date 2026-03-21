@@ -48,7 +48,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           completedAt: new Date().toISOString()
         } as OnboardingData;
         onComplete(completeData);
-      }, 2000);
+      }, 1500);
     } else {
       setCurrentStep(currentStep + 1);
     }
@@ -94,7 +94,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+    <View style={{ flex: 1, backgroundColor: '#f8f7ff' }}>
       <View style={{ flex: 1, maxWidth: 480, width: '100%', alignSelf: 'center' }}>
         {renderCurrentStep()}
       </View>

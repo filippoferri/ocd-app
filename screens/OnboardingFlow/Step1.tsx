@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, View, Image } from 'react-native';
 import ButtonNav from '../../components/ButtonNav';
+import OnboardingHeader from '../../components/OnboardingHeader';
 
 interface Step1Props {
   onNext: () => void;
@@ -10,19 +10,14 @@ interface Step1Props {
 export default function Step1({ onNext }: Step1Props) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.placeholder} />
-        <View style={styles.placeholder} />
-      </View>
+      <OnboardingHeader />
 
       <View style={styles.content}>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Sei nel posto</Text>
-          <Text style={styles.titleHighlight}>giusto</Text>
+          <Text style={styles.title}>Sei nel posto giusto.</Text>
           
           <Text style={styles.subtitle}>
-            Ti aiuteremo a costruire un futuro migliore da vivere,{"\n"}
-            preparandoti a migliorare giorno dopo giorno.
+            Inizia il tuo percorso verso il benessere. Ti aiuteremo a gestire le ossessioni e ridurre i rituali con esercizi semplici e guidati.
           </Text>
         </View>
 
@@ -43,35 +38,21 @@ export default function Step1({ onNext }: Step1Props) {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-
-  placeholder: {
-    width: 40,
-    height: 40,
+    backgroundColor: '#f8f7ff',
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
     alignItems: 'center',
-    paddingTop: 40,
+    justifyContent: 'center', // Center content vertically in the space between header and footer
   },
   imageContainer: {
-    width: 200,
-    height: 200,
-    marginTop: 60,
+    width: 240,
+    height: 240,
+    marginTop: 40,
   },
   image: {
     width: '100%',
@@ -84,13 +65,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-    lineHeight: 38,
-  },
-  titleHighlight: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#8B7CF6',
     textAlign: 'center',
     lineHeight: 38,
   },

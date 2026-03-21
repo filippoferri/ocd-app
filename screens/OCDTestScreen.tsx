@@ -188,22 +188,18 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
             <TouchableOpacity onPress={onBack}>
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Risultato Test</Text>
+            <Text style={styles.headerTitle}></Text>
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={[styles.content, { backgroundColor: '#8B7CF6' }]}>
+          <View style={[styles.content, { backgroundColor: '#8B7CF6', borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
             <View style={styles.resultCard}>
               <View style={styles.resultHeader}>
-                <Text style={styles.resultHeaderText}>Questo è il tuo{'\n'}risultato:</Text>
+                <Text style={styles.resultHeaderText}>Presenza DOC</Text>
               </View>
               
               <ResultCircle text={finalEvaluation !== 'Nessuna' ? finalEvaluation : 'Nessuna'} />
-              
-              <Text style={styles.disorderText}>Disturbo Ossessivo Compulsivo</Text>
-              <Text style={styles.presentText}>
-                {finalEvaluation !== 'Nessuna' ? 'PRESENTE' : 'ASSENTE'}
-              </Text>
+              {/* Rimosso Disturbo Ossessivo Compulsivo PRESENTE/ASSENTE */}
               
               <Text style={styles.resultTitle}>
                 {result.title}
