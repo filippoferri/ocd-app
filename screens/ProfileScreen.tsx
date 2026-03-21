@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../services/AuthService';
@@ -14,9 +14,10 @@ interface ProfileScreenProps {
   testResult: string | null;
   onRetakeTest: () => void;
   onResetOnboarding?: () => void;
+  onDeleteAccount?: () => Promise<void>;
 }
 
-export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding }: ProfileScreenProps) {
+export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding, onDeleteAccount }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   
@@ -130,8 +131,14 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                 <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              {onResetOnboarding && (
-                <TouchableOpacity style={styles.settingItem} onPress={onResetOnboarding}>
+               {onResetOnboarding && (
+                <TouchableOpacity 
+                  style={styles.settingItem} 
+                  onPress={() => {
+                    setShowSettings(false);
+                    onResetOnboarding();
+                  }}
+                >
                   <View style={styles.settingItemLeft}>
                     <Ionicons name="refresh" size={20} color="#333" />
                     <Text style={styles.settingItemText}>Rifai Onboarding</Text>
@@ -161,7 +168,32 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                 <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.settingItem, styles.deleteItem]}>
+              <TouchableOpacity 
+                style={[styles.settingItem, styles.deleteItem]}
+                onPress={() => {
+                  Alert.alert(
+                    "Cancella Account",
+                    "Sei sicuro di voler cancellare il tuo account? Questa azione è irreversibile e tutti i tuoi dati verranno eliminati permanentemente.",
+                    [
+                      { text: "Annulla", style: "cancel" },
+                      { 
+                        text: "Elimina", 
+                        style: "destructive",
+                        onPress: async () => {
+                          if (onDeleteAccount) {
+                            try {
+                              await onDeleteAccount();
+                              onClose(); // Chiude il profilo prima del logout/reset
+                            } catch (e) {
+                              Alert.alert("Errore", "Impossibile cancellare l'account in questo momento.");
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
                 <Text style={[styles.settingItemText, styles.deleteText]}>Cancella l'account</Text>
                 <Ionicons name="chevron-forward" size={20} color="#F44336" />
               </TouchableOpacity>

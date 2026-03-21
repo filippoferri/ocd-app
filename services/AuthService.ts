@@ -335,6 +335,11 @@ class AuthService {
     if (error) throw new Error(error.message);
   }
 
+  async deleteAccount(): Promise<void> {
+    const { error } = await supabase.rpc('delete_user_account');
+    if (error) throw new Error(error.message);
+  }
+
   // ---------- Helpers ----------
 
   private mapSessionUser(authUser: any): User {

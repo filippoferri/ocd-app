@@ -22,6 +22,7 @@ interface AuthContextData {
   setOnboardingCompleted: (completed: boolean | null) => void;
   handleOnboardingComplete: (data: OnboardingData) => Promise<void>;
   handleResetOnboarding: () => Promise<void>;
+  handleDeleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
@@ -94,6 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('✅ AuthContext: Dati caricati. Onboarding:', completed);
       setUserActivities(activities);
+      console.log('🔄 AuthContext: Settaggio onboardingCompleted a', completed);
       setOnboardingCompleted(completed);
       
       if (completed) {
@@ -136,10 +138,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleResetOnboarding = async () => {
     try {
+      console.log('🔄 AuthContext: Chiamata resetOnboarding...');
       await AuthService.resetOnboarding();
+      console.log('✅ AuthContext: ResetOnboarding completato su DB, settaggio stato locale a false');
       setOnboardingCompleted(false);
     } catch (error) {
-      console.error('Errore nel reset onboarding:', error);
+      console.error('❌ AuthContext: Errore nel reset onboarding:', error);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await AuthService.deleteAccount();
+      // Reset locale
+      setCurrentUser(null);
+      setUserActivities([]);
+      setOnboardingCompleted(null);
+      setTestCompleted(false);
+      setTestResult(null);
+      setCurrentMood(null);
+    } catch (error) {
+      console.error('Errore nella cancellazione account:', error);
+      throw error;
     }
   };
 
@@ -232,7 +252,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentMood,
       setOnboardingCompleted,
       handleOnboardingComplete,
-      handleResetOnboarding
+      handleResetOnboarding,
+      handleDeleteAccount
     }}>
       {children}
     </AuthContext.Provider>

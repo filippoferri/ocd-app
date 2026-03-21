@@ -30,7 +30,7 @@ function MainApp() {
     currentUser, userActivities, isLoading, testCompleted, testResult, 
     currentMood, onboardingCompleted, handleAuthSuccess, handleLogout, 
     refreshActivities, setTestCompleted, setTestResult, setCurrentMood,
-    setOnboardingCompleted, handleOnboardingComplete, handleResetOnboarding
+    setOnboardingCompleted, handleOnboardingComplete, handleResetOnboarding, handleDeleteAccount
   } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'home' | 'explore'>('home');
@@ -70,6 +70,7 @@ function MainApp() {
       easing: isVertical ? Easing.out(Easing.poly(4)) : Easing.in(Easing.poly(4)),
       useNativeDriver: true,
     }).start();
+    console.log('🎨 App: Re-render - User:', !!currentUser, 'Loading:', isLoading, 'Onboarding:', onboardingCompleted, 'ShowProfile:', showProfile);
   }, [showActivityDetail, showExerciseDetail, showActivationFlow, showProfile, showMoodFlow, onboardingCompleted, currentUser, isLoading]);
 
 
@@ -189,8 +190,15 @@ function MainApp() {
   };
 
   const handleLocalResetOnboarding = async () => {
-    await handleResetOnboarding();
+    console.log('🔄 App: Reset onboarding richiesto - Chiusura immediata profilo');
     setShowProfile(false);
+    
+    try {
+      await handleResetOnboarding();
+      console.log('✅ App: Reset onboarding completato nel contesto');
+    } catch (e) {
+      console.error('❌ App: Errore durante il reset onboarding:', e);
+    }
   };
 
   const handleExercisePress = (exercise: Exercise) => {
@@ -404,7 +412,8 @@ function MainApp() {
               setShowProfile(false);
               setCurrentScreen('OCDTest');
             }}
-            onResetOnboarding={handleResetOnboarding}
+            onResetOnboarding={handleLocalResetOnboarding}
+            onDeleteAccount={handleDeleteAccount}
           />
         </SlideModal>
 
