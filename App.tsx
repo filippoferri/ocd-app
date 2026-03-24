@@ -21,6 +21,7 @@ import { Exercise } from './types/Exercise';
 import DailyExerciseService from './services/DailyExerciseService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SlideModal from './components/SlideModal';
+import { Colors } from './config/Theme';
 
 
 
@@ -43,6 +44,7 @@ function MainApp() {
   const [showMoodFlow, setShowMoodFlow] = useState(false);
   const [showExerciseDetail, setShowExerciseDetail] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [showOCDTest, setShowOCDTest] = useState(false);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
 
   // Background animation for parallax effect
@@ -109,11 +111,19 @@ function MainApp() {
   const handleToggleScreen = () => {
     if (currentScreen === 'home') {
       setCurrentScreen('diary');
-      setActiveTab('home'); // Quando vai al diario, l'activeTab dovrebbe essere 'home'
+      setActiveTab('home');
     } else {
       setCurrentScreen('home');
-      setActiveTab('home'); // Quando torni alla home, l'activeTab dovrebbe essere 'home'
+      setActiveTab('home');
     }
+  };
+
+  const handleOpenOCDTest = () => {
+    setShowOCDTest(true);
+  };
+
+  const handleCloseOCDTest = () => {
+    setShowOCDTest(false);
   };
 
   const handleAvatarPress = () => {
@@ -185,7 +195,7 @@ function MainApp() {
   const handleLocalOnboardingComplete = async (onboardingData: OnboardingData) => {
     // Se l'utente vuole il test DOC, impostiamo lo schermo prima di chiudere l'onboarding
     if (onboardingData.wantsOCDTest) {
-      setCurrentScreen('OCDTest');
+      setShowOCDTest(true);
     }
     
     await handleOnboardingComplete(onboardingData);
@@ -249,7 +259,7 @@ function MainApp() {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <StatusBar style="dark" />
-        <ActivityIndicator size="large" color="#8B7CF6" />
+        <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={[styles.loadingText, { marginTop: 20 }]}>Caricamento...</Text>
         
         <TouchableOpacity 
@@ -260,7 +270,7 @@ function MainApp() {
           }}
           style={{ marginTop: 40, padding: 10 }}
         >
-          <Text style={{ color: '#8B7CF6', fontSize: 14, textDecorationLine: 'underline' }}>
+          <Text style={{ color: Colors.primary, fontSize: 14, textDecorationLine: 'underline' }}>
             Problemi nel caricamento? Clicca qui
           </Text>
         </TouchableOpacity>
@@ -292,7 +302,7 @@ function MainApp() {
               <HomePage
                 key={homeRefreshKey}
                 userName={currentUser?.name}
-                setCurrentScreen={setCurrentScreen}
+                setCurrentScreen={handleOpenOCDTest as any}
                 testCompleted={testCompleted}
                 currentMood={currentMood}
                 onMoodPress={handleMoodPress}
@@ -317,42 +327,10 @@ function MainApp() {
                 onRetakeTest={() => {
                   setTestCompleted(false);
                   setTestResult(null);
-                  setCurrentScreen('OCDTest');
+                  setShowOCDTest(true);
                 }}
                 userActivities={userActivities}
                 onProfilePress={handleAvatarPress}
-              />
-            )}
-            
-            {currentScreen === 'OCDTest' && (
-              <OCDTestScreen 
-                onBack={() => setCurrentScreen('home')}
-                onTestComplete={async (evaluation: string) => {
-                  setTestCompleted(true);
-                  setTestResult(evaluation);
-                  
-                  // Salva il completamento del test come attività
-                  const now = new Date();
-                  const localNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                  const activity = {
-                    id: `test_${Date.now()}`,
-                    date: localNow,
-                    time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                    type: 'test' as const,
-                    symptom: 'Test DOC',
-                    intensity: 'completato',
-                    description: `Test DOC completato. Valutazione intensità: ${evaluation}`,
-                  };
-                  
-                  try {
-                    await AuthService.addActivity(activity);
-                    await refreshActivities();
-                  } catch (error) {
-                    console.error('Errore nel salvare il completamento del test:', error);
-                  }
-                  
-                  setCurrentScreen('home');
-                }}
               />
             )}
           </View>
@@ -415,7 +393,7 @@ function MainApp() {
               setTestCompleted(false);
               setTestResult(null);
               setShowProfile(false);
-              setCurrentScreen('OCDTest');
+              setShowOCDTest(true);
             }}
             onResetOnboarding={handleLocalResetOnboarding}
             onDeleteAccount={handleDeleteAccount}
@@ -451,6 +429,41 @@ function MainApp() {
              />
            )}
         </SlideModal>
+
+        <SlideModal
+          visible={showOCDTest}
+          onClose={handleCloseOCDTest}
+          direction="horizontal"
+        >
+          <OCDTestScreen 
+            onBack={handleCloseOCDTest}
+            onTestComplete={async (evaluation: string) => {
+              setTestCompleted(true);
+              setTestResult(evaluation);
+              
+              const now = new Date();
+              const localNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              const activity = {
+                id: `test_${Date.now()}`,
+                date: localNow,
+                time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                type: 'test' as const,
+                symptom: 'Test DOC',
+                intensity: 'completato',
+                description: `Test DOC completato. Valutazione intensità: ${evaluation}`,
+              };
+              
+              try {
+                await AuthService.addActivity(activity);
+                await refreshActivities();
+              } catch (error) {
+                console.error('Errore nel salvare il completamento del test:', error);
+              }
+              
+              setShowOCDTest(false);
+            }}
+          />
+        </SlideModal>
       </View>
   );
 }
@@ -468,7 +481,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background,
     position: 'relative',
     overflow: 'hidden',
   },

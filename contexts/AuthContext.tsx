@@ -23,6 +23,7 @@ interface AuthContextData {
   handleOnboardingComplete: (data: OnboardingData) => Promise<void>;
   handleResetOnboarding: () => Promise<void>;
   handleDeleteAccount: () => Promise<void>;
+  handleUpdateAvatar: (avatarId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
@@ -147,6 +148,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const handleUpdateAvatar = async (avatarId: string) => {
+    try {
+      await AuthService.updateProfileAvatar(avatarId);
+      // Update local state immediately
+      if (currentUser) {
+        setCurrentUser({ ...currentUser, avatar_url: avatarId });
+      }
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento avatar:', error);
+      throw error;
+    }
+  };
+
   const handleDeleteAccount = async () => {
     try {
       await AuthService.deleteAccount();
@@ -253,7 +267,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setOnboardingCompleted,
       handleOnboardingComplete,
       handleResetOnboarding,
-      handleDeleteAccount
+      handleDeleteAccount,
+      handleUpdateAvatar
     }}>
       {children}
     </AuthContext.Provider>

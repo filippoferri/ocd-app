@@ -4,8 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
+  View as RNView,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { G, Path, ClipPath, Rect, Defs } from 'react-native-svg';
 
@@ -145,9 +147,11 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
     };
   };
 
+  const insets = useSafeAreaInsets();
+
   if (showLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerWrapper}>
           <View style={styles.loadingContent}>
             <Text style={styles.loadingTitle}>Stiamo analizzando i risultati del test...</Text>
@@ -175,14 +179,14 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
             </View>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (showResult) {
     const result = getResultMessage(finalEvaluation);
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centerWrapper}>
           <View style={styles.header}>
             <TouchableOpacity onPress={onBack}>
@@ -199,7 +203,6 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
               </View>
               
               <ResultCircle text={finalEvaluation !== 'Nessuna' ? finalEvaluation : 'Nessuna'} />
-              {/* Rimosso Disturbo Ossessivo Compulsivo PRESENTE/ASSENTE */}
               
               <Text style={styles.resultTitle}>
                 {result.title}
@@ -207,14 +210,17 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
               
               <TouchableOpacity 
                 style={[styles.primaryButton, { backgroundColor: '#FF8C00' }]} 
-                onPress={() => onTestComplete(finalEvaluation)}
+                onPress={() => {
+                  onTestComplete(finalEvaluation);
+                  onBack(); // Ensure we go back to Home
+                }}
               >
                 <Text style={styles.primaryButtonText}>{result.buttonText}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -224,7 +230,7 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
   const currentIntensity = intensityByQuestion[question.id];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.centerWrapper}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack}>
@@ -330,7 +336,7 @@ export default function OCDTestScreen({ onBack, onTestComplete }: OCDTestScreenP
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -350,9 +356,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 15,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 25,
   },
   headerTitle: {
     fontSize: 18,

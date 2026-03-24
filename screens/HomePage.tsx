@@ -4,6 +4,8 @@ import { Svg, Path, G, Circle } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
 import { UserActivity } from '../types/Activity';
 import DailyExerciseService, { DailySlotResult } from '../services/DailyExerciseService';
+import AuthService from '../services/AuthService';
+import { PREDEFINED_AVATARS } from '../components/AvatarPicker';
 
 const CircleSvg = () => (
   <Svg width={180} height={180} viewBox="0 0 247 241" fill="none">
@@ -207,8 +209,8 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
             style={styles.exerciseCard}
             onPress={() => setCurrentScreen('OCDTest')}
           >
-            <View style={styles.exerciseIcon}>
-              <Ionicons name="clipboard-outline" size={24} color="#8B7CF6" />
+            <View style={[styles.exerciseIcon, { backgroundColor: '#e5e3fd' }]}>
+              <Ionicons name="clipboard-outline" size={24} color="#9381ff" />
             </View>
             <View style={styles.exerciseContent}>
               <Text style={styles.exerciseTitle}>Test DOC</Text>
@@ -282,11 +284,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  homeAvatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   moodIcon: {
     zIndex: 2,
@@ -304,8 +312,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#0D0140',
     marginBottom: 15,
   },
   exerciseCard: {
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
   exerciseTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#0D0140',
     marginBottom: 4,
   },
   exerciseDescription: {

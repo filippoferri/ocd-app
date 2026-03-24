@@ -35,6 +35,7 @@ export interface UserStats {
 
 class AuthService {
   private static instance: AuthService;
+  private currentUser: User | null = null;
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -54,7 +55,8 @@ class AuthService {
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('Login fallito');
 
-    return this.mapSessionUser(data.user);
+    this.currentUser = this.mapSessionUser(data.user);
+    return this.currentUser;
   }
 
   async signup(name: string, email: string, password: string): Promise<User> {
@@ -87,14 +89,32 @@ class AuthService {
       }
       if (!session?.user) {
         console.log('ℹ️ AuthService: Nessuna sessione trovata');
+        this.currentUser = null;
         return null;
       }
       console.log('✅ AuthService: Sessione trovata per', session.user.email);
-      return this.mapSessionUser(session.user);
+      
+      // Fetch profile to get manual avatar_url override
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', session.user.id)
+        .single();
+
+      this.currentUser = this.mapSessionUser(session.user);
+      if (profile?.avatar_url) {
+        this.currentUser.avatar_url = profile.avatar_url;
+      }
+      
+      return this.currentUser;
     } catch (e) {
       console.error('❌ AuthService: Errore imprevisto in getCurrentUser:', e);
       return null;
     }
+  }
+
+  getUser(): User | null {
+    return this.currentUser;
   }
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -337,6 +357,20 @@ class AuthService {
     if (error) throw new Error(error.message);
   }
 
+  async updateProfileAvatar(avatarUrl: string): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Utente non autenticato');
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: session.user.id,
+        avatar_url: avatarUrl,
+      });
+
+    if (error) throw new Error(error.message);
+  }
+
   async deleteAccount(): Promise<void> {
     const { error } = await supabase.rpc('delete_user_account');
     if (error) throw new Error(error.message);
@@ -353,7 +387,7 @@ class AuthService {
       id: authUser.id,
       name: authUser.user_metadata?.name || '',
       email: authUser.email || '',
-      avatar_url: authUser.user_metadata?.avatar_url,
+      avatar_url: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture,
       role: role as 'user' | 'tester' | 'admin',
       provider: authUser.app_metadata?.provider || authUser.identities?.[0]?.provider,
       createdAt: authUser.created_at,

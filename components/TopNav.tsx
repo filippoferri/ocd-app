@@ -2,6 +2,10 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors, Spacing } from '../config/Theme';
+import { Image } from 'react-native';
+import AuthService from '../services/AuthService';
+import { PREDEFINED_AVATARS } from './AvatarPicker';
 
 interface TopNavProps {
   currentScreen: 'home' | 'diary';
@@ -13,9 +17,19 @@ interface TopNavProps {
 export default function TopNav({ currentScreen, onToggle, onAvatarPress, userName }: TopNavProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
+    <View style={[styles.topBar, { paddingTop: insets.top + 10, paddingBottom: 10 }]}>
       <TouchableOpacity style={styles.avatar} onPress={onAvatarPress}>
-        <Ionicons name="person" size={28} color="#666" />
+        {(() => {
+          const user = AuthService.getUser();
+          if (user?.avatar_url) {
+            const predefined = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
+            if (predefined) {
+              return <Image source={predefined.source} style={styles.avatarImage} />;
+            }
+            return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
+          }
+          return <Ionicons name="person" size={28} color="#666" />;
+        })()}
       </TouchableOpacity>
       <View style={styles.toggle}>
         <TouchableOpacity 
@@ -40,22 +54,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.md,
     paddingBottom: 15,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
   },
   toggle: {
     flexDirection: 'row',
-    backgroundColor: '#E6E2FF',
+    backgroundColor: Colors.primaryLight,
     borderRadius: 30,
     padding: 0,
     height: 44,
@@ -73,14 +93,14 @@ const styles = StyleSheet.create({
     // No specific corner resets needed
   },
   toggleOptionActive: {
-    backgroundColor: '#8B7CF6',
+    backgroundColor: '#9381ff',
   },
   toggleText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#8B7CF6',
+    color: '#9381ff',
   },
   toggleTextActive: {
-    color: '#FFFFFF',
+    color: Colors.onPrimary,
   },
 });

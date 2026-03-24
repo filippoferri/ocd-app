@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Dimensions, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Shadow } from '../config/Theme';
 
 interface FAQScreenProps {
   onClose: () => void;
@@ -70,15 +71,18 @@ export default function FAQScreen({ onClose }: FAQScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FE',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#8B7CF6',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    ...Shadow.medium,
   },
   backButton: {
     width: 32,
@@ -89,49 +93,49 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'white',
+    color: Colors.onPrimary,
+    letterSpacing: 0.5,
   },
   content: {
-    padding: 20,
+    padding: Spacing.lg,
     paddingBottom: 40,
   },
   mainTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#333',
-    marginBottom: 24,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginBottom: Spacing.xl,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   faqCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    ...Shadow.light,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: Colors.border,
   },
   question: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B7CF6',
+    color: '#0D0140',
     marginBottom: 10,
   },
   answer: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#666',
+    color: Colors.secondary,
+    fontWeight: '500',
   },
   disclaimer: {
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#999',
+    color: Colors.secondary,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: Spacing.lg,
     lineHeight: 18,
+    opacity: 0.7,
   },
 });

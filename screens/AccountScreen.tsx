@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Animated, Dimensions, Alert, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, TextInput, Dimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Shadow } from '../config/Theme';
+import { Image } from 'react-native';
+import AvatarPicker, { PREDEFINED_AVATARS } from '../components/AvatarPicker';
+import SlideModal from '../components/SlideModal';
+import AuthService from '../services/AuthService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AccountScreenProps {
   onClose: () => void;
   onLogout: () => void;
   userEmail?: string;
   provider?: string;
+  avatarUrl?: string;
 }
 
-const { width } = Dimensions.get('window');
-
-export default function AccountScreen({ onClose, onLogout, userEmail = "utente@esempio.com", provider }: AccountScreenProps) {
+export default function AccountScreen({ onClose, onLogout, userEmail = "utente@esempio.com", provider, avatarUrl }: AccountScreenProps) {
   const insets = useSafeAreaInsets();
+  const { currentUser, handleUpdateAvatar } = useAuth();
   const isGoogleAccount = provider === 'google';
   const [isGoogleEnabled, setIsGoogleEnabled] = useState(isGoogleAccount);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [showEmailLinking, setShowEmailLinking] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   
   // Stati per il form
   const [linkEmail, setLinkEmail] = useState(userEmail);
@@ -81,17 +88,64 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
     setConfirmPassword('');
   };
 
+  const handleAvatarSelect = async (avatarId: string) => {
+    try {
+      await handleUpdateAvatar(avatarId);
+      setShowAvatarPicker(false);
+      Alert.alert("Successo", "Immagine profilo aggiornata!");
+    } catch (e) {
+      Alert.alert("Errore", "Impossibile aggiornare l'avatar.");
+    }
+  };
+
+  const renderAvatar = () => {
+    const avatarToRender = currentUser?.avatar_url || avatarUrl;
+    const predefinedAvatar = PREDEFINED_AVATARS.find(a => a.id === avatarToRender);
+    if (predefinedAvatar) {
+      return <Image source={predefinedAvatar.source} style={styles.avatarImage} />;
+    }
+
+    if (avatarToRender) {
+      return <Image source={{ uri: avatarToRender }} style={styles.avatarImage} />;
+    }
+
+    return (
+      <View style={styles.avatarPlaceholder}>
+        <Ionicons name="person" size={32} color={Colors.secondary} />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="white" />
+          <Ionicons name="chevron-back" size={28} color={Colors.onPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Account</Text>
         <View style={{ width: 28 }} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Immagine Profilo</Text>
+          <TouchableOpacity 
+            style={styles.card}
+            onPress={() => setShowAvatarPicker(true)}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.avatarIconContainer}>
+                {renderAvatar()}
+              </View>
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardTitle}>Cambia Avatar</Text>
+                <Text style={styles.cardSubtitle}>Scegli tra le illustrazioni Calm Tech</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.border} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Connessioni Account</Text>
           
@@ -120,7 +174,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.iconContainer}>
-                <Ionicons name="mail" size={24} color="#8B7CF6" />
+                <Ionicons name="mail" size={24} color={Colors.accent} />
               </View>
               <View style={styles.cardInfo}>
                 <Text style={styles.cardTitle}>Email</Text>
@@ -130,7 +184,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
               </View>
               {isEmailLinked ? (
                 <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                  <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
                   <Text style={styles.verifiedText}>Verificata</Text>
                 </View>
               ) : (
@@ -154,6 +208,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
                   autoCapitalize="none"
                   value={linkEmail}
                   onChangeText={setLinkEmail}
+                  placeholderTextColor={Colors.secondary}
                 />
                 
                 <Text style={styles.formLabel}>Imposta Password</Text>
@@ -163,6 +218,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
                   placeholder="Minimo 8 caratteri"
                   value={linkPassword}
                   onChangeText={setLinkPassword}
+                  placeholderTextColor={Colors.secondary}
                 />
 
                 <View style={styles.formActions}>
@@ -196,13 +252,13 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.iconContainer}>
-                    <Ionicons name="key" size={24} color="#8B7CF6" />
+                    <Ionicons name="key" size={24} color={Colors.accent} />
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={styles.cardTitle}>Cambia Password</Text>
                     <Text style={styles.cardSubtitle}>Ultima modifica: 3 mesi fa</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#CCC" />
+                  <Ionicons name="chevron-forward" size={20} color={Colors.border} />
                 </View>
               </TouchableOpacity>
             ) : (
@@ -214,6 +270,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
                   placeholder="Inserisci password attuale"
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
+                  placeholderTextColor={Colors.secondary}
                 />
                 
                 <Text style={styles.formLabel}>Nuova password</Text>
@@ -223,6 +280,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
                   placeholder="Minimo 8 caratteri"
                   value={newPassword}
                   onChangeText={setNewPassword}
+                  placeholderTextColor={Colors.secondary}
                 />
                 
                 <Text style={styles.formLabel}>Conferma nuova password</Text>
@@ -232,6 +290,7 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
                   placeholder="Ripeti la nuova password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
+                  placeholderTextColor={Colors.secondary}
                 />
 
                 <View style={styles.formActions}>
@@ -269,14 +328,14 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
             }}
           >
             <View style={styles.cardHeader}>
-              <View style={[styles.iconContainer, { backgroundColor: '#FFF0F0' }]}>
-                <Ionicons name="exit-outline" size={24} color="#FF4444" />
+              <View style={[styles.iconContainer, { backgroundColor: '#FFF5F5' }]}>
+                <Ionicons name="exit-outline" size={24} color={Colors.danger} />
               </View>
               <View style={styles.cardInfo}>
-                <Text style={[styles.cardTitle, { color: '#FF4444' }]}>Esci dall'account</Text>
+                <Text style={[styles.cardTitle, { color: Colors.danger }]}>Esci dall'account</Text>
                 <Text style={styles.cardSubtitle}>Tornerai alla schermata di login</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFCCCC" />
+              <Ionicons name="chevron-forward" size={20} color="#FED7D7" />
             </View>
           </TouchableOpacity>
         </View>
@@ -288,6 +347,38 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
           </Text>
         </View>
       </ScrollView>
+
+      {/* Avatar Picker Bottom Sheet (Native Modal style) */}
+      <Modal 
+        visible={showAvatarPicker} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowAvatarPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowAvatarPicker(false)} 
+          />
+          <SlideModal
+            visible={showAvatarPicker}
+            onClose={() => setShowAvatarPicker(false)}
+            direction="vertical"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.bottomSheetContainer}>
+                <AvatarPicker 
+                  onSelect={handleAvatarSelect}
+                  onClose={() => setShowAvatarPicker(false)}
+                  currentAvatarId={currentUser?.avatar_url || avatarUrl}
+                />
+              </View>
+              <View style={styles.modalBottomSpacer} />
+            </View>
+          </SlideModal>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -295,63 +386,81 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  bottomSheetContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    ...Shadow.medium,
+  },
+  modalBottomSpacer: {
+    height: 0,
+    backgroundColor: 'white',
   },
   header: {
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.lg,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    ...Shadow.medium,
   },
   backButton: {
-    padding: 4,
+    padding: Spacing.xs,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: '700',
+    color: Colors.onPrimary,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginBottom: Spacing.md,
     marginLeft: 4,
+    letterSpacing: -0.5,
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: Colors.border,
+    ...Shadow.light,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F0EFFF',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -361,86 +470,90 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#0D0140',
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: 13,
-    color: '#777',
+    color: Colors.secondary,
+    fontWeight: '500',
   },
   toggle: {
     width: 44,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: Colors.border,
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
   toggleActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.success,
   },
   toggleThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     alignSelf: 'flex-start',
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
   },
   linkButton: {
-    backgroundColor: '#F0EFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
   linkButtonText: {
-    fontSize: 13,
-    color: '#8B7CF6',
-    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#0D0140',
+    fontWeight: '700',
   },
   linkingForm: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: Colors.border,
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: '#F0FFF4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
   verifiedText: {
-    fontSize: 11,
-    color: '#4CAF50',
-    fontWeight: 'bold',
+    fontSize: 12,
+    color: Colors.success,
+    fontWeight: '700',
     marginLeft: 4,
   },
   formLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.secondary,
+    fontWeight: '600',
     marginBottom: 8,
     marginTop: 12,
+    marginLeft: 4,
   },
   input: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: '#EEE',
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#333',
+    color: '#0D0140',
+    fontWeight: '500',
   },
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 20,
+    marginTop: 24,
     gap: 12,
   },
   cancelButton: {
@@ -449,34 +562,57 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
+    color: Colors.secondary,
+    fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#8B7CF6',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    ...Shadow.medium,
   },
   saveButtonText: {
     fontSize: 16,
-    color: 'white',
-    fontWeight: 'bold',
+    color: Colors.onPrimary,
+    fontWeight: '700',
   },
   logoutCard: {
-    borderColor: 'rgba(255, 68, 68, 0.1)',
+    borderColor: 'rgba(229, 62, 62, 0.2)',
   },
   footerInfo: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: -8,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: 40,
   },
   footerText: {
     fontSize: 13,
-    color: '#999',
-    marginLeft: 8,
+    color: Colors.secondary,
+    marginLeft: 10,
     flex: 1,
     lineHeight: 18,
+    fontWeight: '500',
+  },
+  avatarIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+  },
+  avatarPlaceholder: {
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

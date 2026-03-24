@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, Easing, Alert, Linking, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { User } from '../services/AuthService';
 import { UserActivity } from '../types/Activity';
 import { NotificationService } from '../services/NotificationService';
 import FAQScreen from './FAQScreen';
@@ -10,7 +9,11 @@ import PrivacyScreen from './PrivacyScreen';
 import AccountScreen from './AccountScreen';
 import TermsScreen from './TermsScreen';
 import PolicyScreen from './PolicyScreen';
-import { Linking } from 'react-native';
+import { Colors, Spacing, Shadow } from '../config/Theme';
+import AvatarPicker, { PREDEFINED_AVATARS } from '../components/AvatarPicker';
+import AuthService, { User } from '../services/AuthService';
+import SlideModal from '../components/SlideModal';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -28,6 +31,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding, onDeleteAccount }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
+  const { handleUpdateAvatar } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -42,6 +46,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
   const [showAccount, setShowAccount] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // New Modal Animation State
   const modalOpacity = useRef(new Animated.Value(0)).current;
@@ -175,6 +180,33 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     }
   };
 
+  const handleAvatarSelect = async (avatarId: string) => {
+    try {
+      await handleUpdateAvatar(avatarId);
+      setShowAvatarPicker(false);
+      Alert.alert("Successo", "Immagine profilo aggiornata!");
+    } catch (e) {
+      Alert.alert("Errore", "Impossibile aggiornare l'avatar.");
+    }
+  };
+
+  const renderAvatar = () => {
+    if (!user) return <Ionicons name="person" size={40} color={Colors.secondary} />;
+
+    // First check if user has a manual illustration selected (stored as avatar_url starting with 'cloud', 'sun', etc.)
+    const predefinedAvatar = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
+    if (predefinedAvatar) {
+      return <Image source={predefinedAvatar.source} style={styles.avatarImage} />;
+    }
+
+    // Default to Google/Social photo or placeholder
+    if (user.avatar_url) {
+      return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
+    }
+
+    return <Ionicons name="person" size={40} color={Colors.secondary} />;
+  };
+
   // Calcola il numero totale di attivazioni (ossessioni + compulsioni, escludendo esercizi)
   const totalActivations = userActivities.filter(activity => 
     !(activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'))
@@ -237,14 +269,14 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
             <ScrollView style={styles.settingsContent}>
               <View style={styles.settingsSection}>
                 <TouchableOpacity 
-                  style={styles.settingItem}
+                   style={styles.settingItem}
                   onPress={handleToggleNotifications}
                 >
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="notifications" size={20} color="#333" />
+                    <Ionicons name="notifications" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Notifiche reminder</Text>
                   </View>
-                  <View style={[styles.toggle, notificationsEnabled && styles.toggleActive]}>
+                  <View style={[styles.toggle, notificationsEnabled && { backgroundColor: Colors.accent }]}>
                     <View style={[styles.toggleThumb, notificationsEnabled && styles.toggleThumbActive]} />
                   </View>
                 </TouchableOpacity>
@@ -254,32 +286,32 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                   onPress={openTimePicker}
                 >
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="time" size={20} color="#333" />
+                    <Ionicons name="time" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Orario Promemoria</Text>
                   </View>
                   <View style={styles.reminderTimeContainer}>
                     <Text style={styles.reminderTimeText}>{reminderTime}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#999" />
+                    <Ionicons name="chevron-forward" size={16} color="#8f959e" />
                   </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="language" size={20} color="#333" />
+                    <Ionicons name="language" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Lingua</Text>
                   </View>
                   <View style={styles.reminderTimeContainer}>
                     <Text style={styles.reminderTimeText}>Italiano</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#999" />
+                    <Ionicons name="chevron-forward" size={16} color="#8f959e" />
                   </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('account')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="person-circle" size={20} color="#333" />
+                    <Ionicons name="person-circle" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Account</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
                 </TouchableOpacity>
 
                 {/* Tools per i Tester */}
@@ -296,10 +328,10 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                       }}
                     >
                       <View style={styles.settingItemLeft}>
-                        <Ionicons name="flask" size={20} color="#FF8C00" />
-                        <Text style={[styles.settingItemText, { color: '#FF8C00' }]}>Manda notifica di test</Text>
+                        <Ionicons name="notifications" size={20} color={Colors.warning} />
+                        <Text style={[styles.settingItemText, { color: Colors.warning }]}>Manda notifica di test</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color="#FF8C00" />
+                      <Ionicons name="chevron-forward" size={16} color={Colors.warning} />
                     </TouchableOpacity>
 
                     {onResetOnboarding && (
@@ -320,51 +352,51 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                         }}
                       >
                         <View style={styles.settingItemLeft}>
-                          <Ionicons name="refresh" size={20} color="#FF8C00" />
-                          <Text style={[styles.settingItemText, { color: '#FF8C00' }]}>Rifai Onboarding</Text>
+                          <Ionicons name="refresh" size={20} color={Colors.warning} />
+                          <Text style={[styles.settingItemText, { color: Colors.warning }]}>Rifai Onboarding</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#FF8C00" />
+                        <Ionicons name="chevron-forward" size={20} color={Colors.warning} />
                       </TouchableOpacity>
                     )}
                   </>
                 )}
               </View>
 
-              <Text style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>Sicurezza e privacy</Text>
+              <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.lg }]}>Sicurezza e privacy</Text>
               <View style={styles.settingsSection}>
                 <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('faq')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="help-circle" size={20} color="#333" />
+                    <Ionicons name="help-circle" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>FAQs</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('privacy')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="shield-checkmark" size={20} color="#333" />
+                    <Ionicons name="shield-checkmark" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Privacy e Sicurezza</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>Risorse</Text>
+              <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.lg }]}>Risorse</Text>
               <View style={styles.settingsSection}>
                 <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('terms')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="document-text" size={20} color="#333" />
+                    <Ionicons name="document-text" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Termini e Condizioni</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('policy')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="shield-half" size={20} color="#333" />
+                    <Ionicons name="shield-half" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Privacy Policy</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -372,16 +404,16 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                   onPress={() => Linking.openURL('https://forms.google.com/your-form-id')}
                 >
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="chatbubble-ellipses" size={20} color="#333" />
+                    <Ionicons name="chatbubble-ellipses" size={20} color={Colors.accent} />
                     <Text style={styles.settingItemText}>Feedback</Text>
                   </View>
-                  <Ionicons name="open-outline" size={18} color="#999" />
+                  <Ionicons name="open-outline" size={18} color="#8f959e" />
                 </TouchableOpacity>
               </View>
 
               <View style={[styles.settingsSection, { marginBottom: 40 }]}>
                 <TouchableOpacity 
-                  style={[styles.settingItem, styles.deleteItem]}
+                   style={[styles.settingItem, styles.deleteItem]}
                   onPress={() => {
                     Alert.alert(
                       "Cancella Account",
@@ -407,7 +439,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                   }}
                 >
                   <Text style={[styles.settingItemText, styles.deleteText]}>Cancella l'account</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#F44336" />
+                  <Ionicons name="chevron-forward" size={20} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
 
@@ -436,6 +468,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                   onLogout={onLogout}
                   userEmail={user?.email || undefined} 
                   provider={user?.provider}
+                  avatarUrl={user?.avatar_url}
                 />
               )}
             </Animated.View>
@@ -445,20 +478,20 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
           <Modal visible={showTimePicker} transparent animationType="none">
             <View style={styles.modalOverlay}>
               <Animated.View 
-                style={[
+                 style={[
                   styles.modalBackdrop, 
                   { opacity: modalOpacity }
                 ]} 
               >
                 <TouchableOpacity 
-                  style={{ flex: 1 }} 
+                   style={{ flex: 1 }} 
                   activeOpacity={1} 
                   onPress={closeTimePicker} 
                 />
               </Animated.View>
               
               <Animated.View 
-                style={[
+                 style={[
                   styles.modalContent, 
                   { transform: [{ translateY: modalSlide }] }
                 ]}
@@ -507,36 +540,51 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     <View style={styles.container}>
       <Animated.View style={[styles.mainWrapper, { transform: [{ translateY: backgroundShiftAnim }] }]}>
         <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity onPress={onClose}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowSettings(true)}>
-          <Ionicons name="settings" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileSection}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={40} color="#666" />
-          </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="add" size={16} color="white" />
+          <TouchableOpacity onPress={onClose} style={styles.iconButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.onPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profilo</Text>
+          <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.iconButton}>
+            <Ionicons name="settings-outline" size={24} color={Colors.onPrimary} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.userName}>{user?.name || 'Utente'}</Text>
-      </View>
 
-      <View style={styles.statsSection}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{totalActivations}</Text>
-          <Text style={styles.statLabel}>Attivazioni</Text>
+        <View style={styles.profileSection}>
+          <TouchableOpacity 
+            style={styles.avatarContainer}
+            onPress={() => setShowAvatarPicker(true)}
+          >
+            <View style={styles.avatar}>
+              {renderAvatar()}
+            </View>
+            <View style={styles.editButton}>
+              <Ionicons name="camera" size={14} color="white" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.userName}>{user?.name || 'Utente'}</Text>
+          <Text style={styles.userEmail}>{user?.email || ''}</Text>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{totalExercises}</Text>
-          <Text style={styles.statLabel}>Esercizi</Text>
+
+        <View style={styles.statsSection}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: '#EBF8FF' }]}>
+              <Ionicons name="flash" size={20} color="#3182CE" />
+            </View>
+            <View>
+              <Text style={styles.statNumberText}>{totalActivations}</Text>
+              <Text style={styles.statLabelText}>Attivazioni</Text>
+            </View>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: '#F0FFF4' }]}>
+              <Ionicons name="heart" size={20} color={Colors.success} />
+            </View>
+            <View>
+              <Text style={styles.statNumberText}>{totalExercises}</Text>
+              <Text style={styles.statLabelText}>Esercizi</Text>
+            </View>
+          </View>
         </View>
-      </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.section}>
@@ -556,7 +604,6 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
               );
             })}
           </View>
-
         </View>
 
         <View style={styles.section}>
@@ -583,12 +630,12 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                   <Text style={styles.testScoreText}>{testResult}</Text>
                 </View>
                 <View style={styles.testResultInfo}>
-                  <Text style={styles.testResultTitle}>Disturbo Ossessivo Compulsivo</Text>
+                  <Text style={styles.testResultTitle}>DOC</Text>
                   <Text style={styles.testResultStatus}>PRESENTE</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.retakeButton} onPress={onRetakeTest}>
-                <Ionicons name="refresh" size={20} color="white" />
+                <Ionicons name="refresh" size={20} color={Colors.onPrimary} />
                 <Text style={styles.retakeButtonText}>Rifai il test</Text>
               </TouchableOpacity>
             </View>
@@ -598,6 +645,38 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
 
         {renderSettings()}
       </Animated.View>
+
+      {/* Avatar Picker Bottom Sheet (Native Modal style) */}
+      <Modal 
+        visible={showAvatarPicker} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowAvatarPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setShowAvatarPicker(false)} 
+          />
+          <SlideModal
+            visible={showAvatarPicker}
+            onClose={() => setShowAvatarPicker(false)}
+            direction="vertical"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.bottomSheetContainer}>
+                <AvatarPicker 
+                  onSelect={handleAvatarSelect}
+                  onClose={() => setShowAvatarPicker(false)}
+                  currentAvatarId={user?.avatar_url}
+                />
+              </View>
+              <View style={styles.modalBottomSpacer} />
+            </View>
+          </SlideModal>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -605,7 +684,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.primary,
   },
   mainWrapper: {
     flex: 1,
@@ -614,363 +693,398 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    // paddingTop handled dynamically
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.onPrimary,
+    letterSpacing: 0.5,
+  },
+  iconButton: {
+    padding: Spacing.xs,
+    borderRadius: 12,
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 30,
+    paddingVertical: Spacing.xl,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 15,
+    marginBottom: Spacing.md,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E8E8E8',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
   editButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#333',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FF8C00',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 26,
+    fontWeight: '700',
+    color: Colors.onPrimary,
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '500',
   },
   statsSection: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    marginHorizontal: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.lg,
+    gap: Spacing.md,
   },
-  statItem: {
+  statCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: Spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  statNumber: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  statLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 5,
+  statNumberText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.onPrimary,
+  },
+  statLabelText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 30,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: Spacing.xl,
+    ...Shadow.light,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginBottom: Spacing.md,
+    letterSpacing: -0.5,
   },
   exerciseCalendar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    backgroundColor: Colors.surface,
+    padding: Spacing.md,
+    borderRadius: 20,
+    ...Shadow.light,
   },
   calendarDay: {
     alignItems: 'center',
+    flex: 1,
   },
   calendarDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E8E8E8',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.border,
     marginBottom: 8,
   },
   calendarDotActive: {
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.accent,
+    transform: [{ scale: 1.2 }],
   },
   calendarDayText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
+    fontSize: 11,
+    color: Colors.secondary,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   calendarDayNumber: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  exerciseText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0D0140',
   },
   goalSection: {
-    marginBottom: 15,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.surface,
+    padding: Spacing.md,
+    borderRadius: 20,
+    ...Shadow.light,
   },
   goalText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8B7CF6',
-    marginBottom: 10,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginBottom: Spacing.sm,
   },
   progressBar: {
-    height: 8,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: Colors.border,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.accent,
+    borderRadius: 3,
   },
   goalDescription: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.secondary,
     lineHeight: 20,
+    paddingHorizontal: Spacing.xs,
   },
-  // Settings Modal Styles
   settingsContainer: {
     flex: 1,
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.primary,
   },
   settingsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    // paddingTop handled dynamically
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
   },
   settingsTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: '700',
+    color: Colors.onPrimary,
   },
   settingsContent: {
     flex: 1,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 30,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: Spacing.xl,
   },
   settingsSection: {
-    marginBottom: 30,
+    marginBottom: Spacing.xl,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginBottom: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    paddingVertical: 16,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   settingItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: 12,
   },
   settingItemText: {
     fontSize: 16,
-    color: '#333',
-    marginLeft: 10,
+    color: '#0D0140',
+    fontWeight: '600',
+  },
+  settingDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.md,
+  },
+  reminderTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reminderTimeText: {
+    fontSize: 15,
+    color: '#8f959e',
+    fontWeight: '600',
   },
   toggle: {
     width: 44,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E8E8E8',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  toggleActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.border,
+    padding: 2,
   },
   toggleThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
     backgroundColor: 'white',
-    alignSelf: 'flex-start',
+    ...Shadow.light,
   },
   toggleThumbActive: {
-    alignSelf: 'flex-end',
+    marginLeft: 20,
   },
-  deleteItem: {
-    backgroundColor: '#FFE8E8',
+  subModalContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.background,
   },
-  deleteText: {
-    color: '#F44336',
-    marginLeft: 0,
-  },
-  versionText: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#999',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  reminderTimeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reminderTimeText: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 5,
-  },
-  settingDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 15,
-  },
-  // Modal Picker Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-    // Eliminiamo maxHeight: '50%' per evitare tagli durante l'animazione se necessario, 
-    // ma lo teniamo se vogliamo che rimanga metà schermo.
-    height: height * 0.45, 
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+  },
+  modalBottomSpacer: {
+    height: 0,
+    backgroundColor: 'white',
+  },
+  bottomSheetContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    ...Shadow.medium,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderBottomColor: Colors.border,
   },
   modalCancel: {
+    color: Colors.secondary,
     fontSize: 16,
-    color: '#007AFF',
+    fontWeight: '600',
   },
   modalDone: {
+    color: Colors.accent,
     fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   pickerContainer: {
     flexDirection: 'row',
-    height: 200,
+    height: 250,
   },
   picker: {
     flex: 1,
-    paddingHorizontal: 10,
   },
   pickerItem: {
-    paddingVertical: 12,
-    alignItems: 'center',
+    height: 50,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   pickerItemSelected: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
+    backgroundColor: '#F8F7FF',
   },
   pickerText: {
-    fontSize: 18,
-    color: '#333',
+    fontSize: 20,
+    color: Colors.secondary,
   },
   pickerTextSelected: {
-    color: '#007AFF',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Colors.accent,
   },
-  // Test Result Styles
   testResultCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: Spacing.md,
+    ...Shadow.light,
   },
   testResultHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing.md,
   },
   testScoreCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#8B7CF6',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 12,
   },
   testScoreText: {
-    fontSize: 18,
-    fontWeight: 'bold',
     color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
   },
   testResultInfo: {
     flex: 1,
   },
   testResultTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#0D0140',
   },
   testResultStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#8B7CF6',
+    fontSize: 12,
+    color: Colors.danger,
+    fontWeight: '800',
+    marginTop: 2,
   },
   retakeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.accent,
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
   },
   retakeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
     color: 'white',
-    marginLeft: 8,
+    fontWeight: '700',
+    fontSize: 14,
   },
-  subModalContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'white',
+  versionText: {
+    textAlign: 'center',
+    color: Colors.secondary,
+    fontSize: 12,
+    marginVertical: 20,
+    opacity: 0.5,
+  },
+  deleteItem: {
+    borderBottomWidth: 0,
+    marginTop: 10,
+  },
+  deleteText: {
+    color: Colors.danger,
   },
 });

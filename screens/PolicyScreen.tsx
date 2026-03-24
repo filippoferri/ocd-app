@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Shadow } from '../config/Theme';
 
 interface PolicyScreenProps {
   onClose: () => void;
@@ -16,7 +17,7 @@ export default function PolicyScreen({ onClose }: PolicyScreenProps) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="white" />
+          <Ionicons name="chevron-back" size={28} color={Colors.onPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={{ width: 28 }} />
@@ -104,68 +105,73 @@ export default function PolicyScreen({ onClose }: PolicyScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.background,
   },
   header: {
-    backgroundColor: '#8B7CF6',
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.lg,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    ...Shadow.medium,
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: '700',
+    color: Colors.onPrimary,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    padding: Spacing.lg,
+    ...Shadow.light,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#0D0140',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   date: {
     fontSize: 14,
-    color: '#999',
-    marginBottom: 24,
+    color: Colors.secondary,
+    marginBottom: Spacing.lg,
+    fontWeight: '500',
+    opacity: 0.6,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#8B7CF6',
-    marginTop: 20,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginTop: Spacing.lg,
     marginBottom: 10,
+    letterSpacing: -0.2,
   },
   paragraph: {
     fontSize: 16,
-    color: '#555',
+    color: Colors.secondary,
     lineHeight: 24,
     marginBottom: 16,
+    fontWeight: '500',
   },
   divider: {
     height: 1,
-    backgroundColor: '#EEE',
-    marginVertical: 20,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.lg,
   },
 });
