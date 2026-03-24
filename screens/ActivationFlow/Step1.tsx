@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Icons from 'phosphor-react-native';
 import { 
@@ -84,6 +84,78 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
   const [newSymptomText, setNewSymptomText] = useState('');
   const [newSymptomIconName, setNewSymptomIconName] = useState('PlusCircle');
   const [editingSymptomId, setEditingSymptomId] = useState<string | null>(null);
+
+  // New Modal Animation State
+  const dateModalOpacity = useRef(new Animated.Value(0)).current;
+  const dateModalSlide = useRef(new Animated.Value(height)).current;
+  const timeModalOpacity = useRef(new Animated.Value(0)).current;
+  const timeModalSlide = useRef(new Animated.Value(height)).current;
+
+  const openDatePicker = () => {
+    setShowDatePicker(true);
+    Animated.parallel([
+      Animated.timing(dateModalOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dateModalSlide, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.poly(4)),
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+
+  const closeDatePicker = () => {
+    Animated.parallel([
+      Animated.timing(dateModalOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dateModalSlide, {
+        toValue: height,
+        duration: 300,
+        easing: Easing.in(Easing.poly(4)),
+        useNativeDriver: true,
+      })
+    ]).start(() => setShowDatePicker(false));
+  };
+
+  const openTimePicker = () => {
+    setShowTimePicker(true);
+    Animated.parallel([
+      Animated.timing(timeModalOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(timeModalSlide, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.poly(4)),
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+
+  const closeTimePicker = () => {
+    Animated.parallel([
+      Animated.timing(timeModalOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(timeModalSlide, {
+        toValue: height,
+        duration: 300,
+        easing: Easing.in(Easing.poly(4)),
+        useNativeDriver: true,
+      })
+    ]).start(() => setShowTimePicker(false));
+  };
 
   // Load custom symptoms from storage
   useEffect(() => {
@@ -225,10 +297,10 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
         <Text style={styles.title}>Quando è successo?</Text>
         
         <View style={styles.dateTimeContainer}>
-          <TouchableOpacity style={styles.dateBox} onPress={() => setShowDatePicker(true)}>
+          <TouchableOpacity style={styles.dateBox} onPress={openDatePicker}>
             <Text style={styles.dateText}>{date}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.timeBox} onPress={() => setShowTimePicker(true)}>
+          <TouchableOpacity style={styles.timeBox} onPress={openTimePicker}>
             <Text style={styles.timeText}>{time}</Text>
           </TouchableOpacity>
         </View>
@@ -321,16 +393,34 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
       />
 
       {/* Date Picker Modal */}
-      <Modal visible={showDatePicker} transparent animationType="slide">
+      <Modal visible={showDatePicker} transparent animationType="none">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <Animated.View 
+            style={[
+              styles.modalBackdrop, 
+              { opacity: dateModalOpacity }
+            ]} 
+          >
+            <TouchableOpacity 
+              style={{ flex: 1 }} 
+              activeOpacity={1} 
+              onPress={closeDatePicker} 
+            />
+          </Animated.View>
+          
+          <Animated.View 
+            style={[
+              styles.modalContent, 
+              { transform: [{ translateY: dateModalSlide }] }
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <TouchableOpacity onPress={closeDatePicker}>
                 <Text style={styles.modalCancel}>Annulla</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => {
                 setDate(`${selectedDay} ${selectedMonth} ${selectedYear}`);
-                setShowDatePicker(false);
+                closeDatePicker();
               }}>
                 <Text style={styles.modalDone}>Fatto</Text>
               </TouchableOpacity>
@@ -370,21 +460,39 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
                 ))}
               </ScrollView>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
       {/* Time Picker Modal */}
-      <Modal visible={showTimePicker} transparent animationType="slide">
+      <Modal visible={showTimePicker} transparent animationType="none">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <Animated.View 
+            style={[
+              styles.modalBackdrop, 
+              { opacity: timeModalOpacity }
+            ]} 
+          >
+            <TouchableOpacity 
+              style={{ flex: 1 }} 
+              activeOpacity={1} 
+              onPress={closeTimePicker} 
+            />
+          </Animated.View>
+          
+          <Animated.View 
+            style={[
+              styles.modalContent, 
+              { transform: [{ translateY: timeModalSlide }] }
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+              <TouchableOpacity onPress={closeTimePicker}>
                 <Text style={styles.modalCancel}>Annulla</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => {
                 setTime(`${selectedHour}:${selectedMinute}`);
-                setShowTimePicker(false);
+                closeTimePicker();
               }}>
                 <Text style={styles.modalDone}>Fatto</Text>
               </TouchableOpacity>
@@ -413,7 +521,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
                 ))}
               </ScrollView>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
@@ -669,15 +777,18 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 40,
-    maxHeight: '50%',
+    height: height * 0.45,
   },
   modalHeader: {
     flexDirection: 'row',

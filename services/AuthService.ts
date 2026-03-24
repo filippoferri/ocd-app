@@ -7,6 +7,8 @@ export interface User {
   name: string;
   email: string;
   avatar_url?: string;
+  role?: 'user' | 'tester' | 'admin';
+  provider?: string;
   createdAt: string;
 }
 
@@ -343,11 +345,17 @@ class AuthService {
   // ---------- Helpers ----------
 
   private mapSessionUser(authUser: any): User {
+    // For MVP, we'll identify testers by a specific tag in metadata or email
+    const role = authUser.user_metadata?.role || 
+                 (authUser.email?.includes('test') ? 'tester' : 'user');
+
     return {
       id: authUser.id,
       name: authUser.user_metadata?.name || '',
       email: authUser.email || '',
       avatar_url: authUser.user_metadata?.avatar_url,
+      role: role as 'user' | 'tester' | 'admin',
+      provider: authUser.app_metadata?.provider || authUser.identities?.[0]?.provider,
       createdAt: authUser.created_at,
     };
   }
