@@ -3,6 +3,9 @@ import { StyleSheet, Text, View, TouchableOpacity, TextInput, KeyboardAvoidingVi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../../components/ButtonNav';
+import { Image } from 'react-native';
+import AuthService from '../../services/AuthService';
+import { PREDEFINED_AVATARS } from '../../components/AvatarPicker';
 
 interface Step3Props {
   onNext: (data: { description: string; type: 'ossessione' | 'compulsione' | null }) => void;
@@ -25,13 +28,31 @@ export default function Step3({ onNext, onBack, onClose }: Step3Props) {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#333" />
-        </TouchableOpacity>
+      <View style={[styles.header, { paddingTop: insets.top + 10, paddingBottom: 10 }]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <View style={styles.avatar}>
+            {(() => {
+              const user = AuthService.getUser();
+              if (user?.avatar_url) {
+                const predefined = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
+                if (predefined) {
+                  return <Image source={predefined.source} style={styles.avatarImage} />;
+                }
+                return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
+              }
+              return <Ionicons name="person" size={28} color="#666" />;
+            })()}
+          </View>
+        </View>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -118,16 +139,41 @@ export default function Step3({ onNext, onBack, onClose }: Step3Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#f8f7ff',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    // paddingTop handled dynamically
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    backgroundColor: '#f8f7ff',
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginLeft: 10,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
   },
   backButton: {
     padding: 8,
@@ -180,13 +226,13 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   inputContainer: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#e5e3fd',
     borderRadius: 16,
     padding: 16,
     minHeight: 200,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E5E7EB',
   },
   helperText: {
     fontSize: 14,
@@ -200,6 +246,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     lineHeight: 24,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      }
+    } as any),
   },
   modalOverlay: {
     flex: 1,
