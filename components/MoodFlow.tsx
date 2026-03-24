@@ -7,7 +7,9 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, G, ClipPath, Defs, Rect } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 
 // SVG Components
 const FaceSad = ({ selected }: { selected?: boolean }) => (
@@ -79,6 +81,7 @@ const moodConfig = {
 };
 
 export default function MoodFlow({ visible, onClose, onSave }: MoodFlowProps) {
+  const insets = useSafeAreaInsets();
   const [selectedMood, setSelectedMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
 
   const handleMoodSelect = (mood: 'sad' | 'neutral' | 'happy') => {
@@ -105,12 +108,10 @@ export default function MoodFlow({ visible, onClose, onSave }: MoodFlowProps) {
       onRequestClose={handleClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>←</Text>
-          </TouchableOpacity>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+          <View style={{ width: 44 }} />
           <TouchableOpacity onPress={handleClose} style={styles.xButton}>
-            <Text style={styles.xButtonText}>✕</Text>
+            <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
         </View>
 
@@ -165,28 +166,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 20,
   },
-  closeButton: {
-    padding: 10,
-  },
-  closeButtonText: {
-    fontSize: 24,
-    color: '#333',
-  },
   xButton: {
-    padding: 10,
-  },
-  xButtonText: {
-    fontSize: 20,
-    color: '#333',
+    padding: 8,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: 40,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   title: {
     fontSize: 24,
