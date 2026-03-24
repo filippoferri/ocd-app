@@ -200,7 +200,7 @@ export default function Step4({ onFinish, activationData, onOpenExercise }: Step
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#f8f7ff',
   },
   content: {
     flex: 1,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   exerciseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#e5e3fd',
     borderRadius: 16,
     width: '100%',
     padding: 16,

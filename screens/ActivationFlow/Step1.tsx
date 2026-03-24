@@ -411,7 +411,11 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
           <Animated.View 
             style={[
               styles.modalContent, 
-              { transform: [{ translateY: dateModalSlide }] }
+              { 
+                transform: [{ translateY: dateModalSlide }],
+                paddingBottom: Math.max(20, insets.bottom),
+                height: 320 + Math.max(20, insets.bottom),
+              }
             ]}
           >
             <View style={styles.modalHeader}>
@@ -424,6 +428,11 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
               }}>
                 <Text style={styles.modalDone}>Fatto</Text>
               </TouchableOpacity>
+            </View>
+            <View style={styles.pickerSelectionRow}>
+              <View style={styles.selectionItem}><Text style={styles.selectionText}>{selectedMonth}</Text></View>
+              <View style={styles.selectionItem}><Text style={styles.selectionText}>{selectedDay}</Text></View>
+              <View style={styles.selectionItem}><Text style={styles.selectionText}>{selectedYear}</Text></View>
             </View>
             <View style={styles.pickerContainer}>
               <ScrollView style={styles.picker} showsVerticalScrollIndicator={false}>
@@ -483,7 +492,11 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
           <Animated.View 
             style={[
               styles.modalContent, 
-              { transform: [{ translateY: timeModalSlide }] }
+              { 
+                transform: [{ translateY: timeModalSlide }],
+                paddingBottom: Math.max(20, insets.bottom),
+                height: 320 + Math.max(20, insets.bottom),
+              }
             ]}
           >
             <View style={styles.modalHeader}>
@@ -496,6 +509,10 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
               }}>
                 <Text style={styles.modalDone}>Fatto</Text>
               </TouchableOpacity>
+            </View>
+            <View style={styles.pickerSelectionRow}>
+              <View style={styles.selectionItem}><Text style={styles.selectionText}>{selectedHour}</Text></View>
+              <View style={styles.selectionItem}><Text style={styles.selectionText}>{selectedMinute}</Text></View>
             </View>
             <View style={styles.pickerContainer}>
               <ScrollView style={styles.picker} showsVerticalScrollIndicator={false}>
@@ -652,7 +669,7 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#f8f7ff',
   },
   header: {
     flexDirection: 'row',
@@ -661,7 +678,7 @@ const styles = StyleSheet.create({
     // paddingTop handled dynamically
     paddingHorizontal: 20,
     paddingBottom: 10,
-    backgroundColor: 'white',
+    backgroundColor: '#f8f7ff',
   },
   leftSection: {
     width: 40,
@@ -689,7 +706,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dateBox: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#e5e3fd',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
@@ -700,7 +717,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   timeBox: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#e5e3fd',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
@@ -723,7 +740,7 @@ const styles = StyleSheet.create({
   },
   symptomCard: {
     width: '47%',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#e5e3fd',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -787,8 +804,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: 40,
-    height: height * 0.45,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -801,12 +816,12 @@ const styles = StyleSheet.create({
   },
   modalCancel: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#8B7CF6',
   },
   modalDone: {
     fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: '#8B7CF6',
+    fontWeight: '700',
   },
   pickerContainer: {
     flexDirection: 'row',
@@ -814,24 +829,41 @@ const styles = StyleSheet.create({
   },
   picker: {
     flex: 1,
-    paddingHorizontal: 10,
   },
   pickerItem: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pickerItemSelected: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
   pickerText: {
     fontSize: 18,
-    color: '#333',
+    color: '#999',
+    fontWeight: '500',
   },
   pickerTextSelected: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: '#8B7CF6',
+    fontWeight: '700',
+  },
+  pickerSelectionRow: {
+    flexDirection: 'row',
+    backgroundColor: '#e5e3fd',
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  selectionItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionText: {
+    fontSize: 18,
+    color: '#8B7CF6',
+    fontWeight: '700',
   },
 
   // NEW MODAL STYLES

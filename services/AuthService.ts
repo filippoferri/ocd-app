@@ -71,6 +71,13 @@ class AuthService {
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('Registrazione fallita');
 
+    // Assign a default "Premium" avatar (Sun) for new email users
+    try {
+      await this.updateProfileAvatar('avatar_sun');
+    } catch (e) {
+      console.warn('Could not set default avatar:', e);
+    }
+
     return this.mapSessionUser(data.user);
   }
 
