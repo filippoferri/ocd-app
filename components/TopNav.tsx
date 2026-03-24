@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing } from '../config/Theme';
 import { Image } from 'react-native';
-import AuthService from '../services/AuthService';
+import { useAuth } from '../contexts/AuthContext';
 import { PREDEFINED_AVATARS } from './AvatarPicker';
 
 interface TopNavProps {
@@ -16,17 +16,18 @@ interface TopNavProps {
 
 export default function TopNav({ currentScreen, onToggle, onAvatarPress, userName }: TopNavProps) {
   const insets = useSafeAreaInsets();
+  const { currentUser } = useAuth();
+  
   return (
     <View style={[styles.topBar, { paddingTop: insets.top + 10, paddingBottom: 10 }]}>
       <TouchableOpacity style={styles.avatar} onPress={onAvatarPress}>
         {(() => {
-          const user = AuthService.getUser();
-          if (user?.avatar_url) {
-            const predefined = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
+          if (currentUser?.avatar_url) {
+            const predefined = PREDEFINED_AVATARS.find(a => a.id === currentUser.avatar_url);
             if (predefined) {
               return <Image source={predefined.source} style={styles.avatarImage} />;
             }
-            return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
+            return <Image source={{ uri: currentUser.avatar_url }} style={styles.avatarImage} />;
           }
           return <Ionicons name="person" size={28} color="#666" />;
         })()}
