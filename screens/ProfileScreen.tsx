@@ -266,77 +266,129 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.settingsContent}>
-              <View style={styles.settingsSection}>
+            <ScrollView style={styles.settingsContent} contentContainerStyle={{ paddingBottom: 40 }}>
+              <Text style={styles.settingsSectionTitle}>Impostazioni generali</Text>
+              
+              <View style={styles.settingCard}>
                 <TouchableOpacity 
-                   style={styles.settingItem}
+                   style={styles.settingItemRow}
                   onPress={handleToggleNotifications}
                 >
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="notifications" size={20} color={Colors.accent} />
+                    <Ionicons name="notifications" size={22} color="#0D0140" />
                     <Text style={styles.settingItemText}>Notifiche reminder</Text>
                   </View>
-                  <View style={[styles.toggle, notificationsEnabled && { backgroundColor: Colors.accent }]}>
+                  <View style={[styles.toggle, notificationsEnabled && { backgroundColor: '#4CD964' }]}>
                     <View style={[styles.toggleThumb, notificationsEnabled && styles.toggleThumbActive]} />
                   </View>
                 </TouchableOpacity>
+              </View>
 
+              <View style={styles.settingCard}>
                 <TouchableOpacity 
-                  style={styles.settingItem}
+                  style={styles.settingItemRow}
                   onPress={openTimePicker}
                 >
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="time" size={20} color={Colors.accent} />
+                    <Ionicons name="time" size={22} color="#0D0140" />
                     <Text style={styles.settingItemText}>Orario Promemoria</Text>
                   </View>
                   <View style={styles.reminderTimeContainer}>
                     <Text style={styles.reminderTimeText}>{reminderTime}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#8f959e" />
+                    <Ionicons name="chevron-forward" size={20} color="#0D0140" />
                   </View>
                 </TouchableOpacity>
+              </View>
 
-                <TouchableOpacity style={styles.settingItem}>
+              <View style={styles.settingCard}>
+                <TouchableOpacity style={styles.settingItemRow} onPress={() => openSubModal('account')}>
                   <View style={styles.settingItemLeft}>
-                    <Ionicons name="language" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>Lingua</Text>
-                  </View>
-                  <View style={styles.reminderTimeContainer}>
-                    <Text style={styles.reminderTimeText}>Italiano</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#8f959e" />
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('account')}>
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="person-circle" size={20} color={Colors.accent} />
+                    <Ionicons name="person-circle" size={22} color="#0D0140" />
                     <Text style={styles.settingItemText}>Account</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
+                  <Ionicons name="chevron-forward" size={20} color="#0D0140" />
                 </TouchableOpacity>
+              </View>
 
-                {/* Tools per i Tester */}
-                {user?.role === 'tester' && (
-                  <>
-                    <View style={styles.settingDivider} />
-                    <Text style={[styles.sectionTitle, { marginTop: 10, marginBottom: 5, paddingHorizontal: 0 }]}>Strumenti Tester</Text>
-                    
+              <Text style={styles.settingsSectionTitle}>Sicurezza e privacy</Text>
+
+              <View style={styles.settingCard}>
+                <TouchableOpacity style={styles.settingItemRow} onPress={() => openSubModal('faq')}>
+                  <View style={styles.settingItemLeft}>
+                    <Ionicons name="help-circle" size={22} color="#0D0140" />
+                    <Text style={styles.settingItemText}>FAQs</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#0D0140" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.settingCard}>
+                <TouchableOpacity style={styles.settingItemRow} onPress={() => openSubModal('privacy')}>
+                  <View style={styles.settingItemLeft}>
+                    <Ionicons name="shield-checkmark" size={22} color="#0D0140" />
+                    <Text style={styles.settingItemText}>Privacy e Sicurezza</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#0D0140" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.settingCard}>
+                <TouchableOpacity style={styles.settingItemRow} onPress={() => openSubModal('terms')}>
+                  <View style={styles.settingItemLeft}>
+                    <Ionicons name="document-text" size={22} color="#0D0140" />
+                    <Text style={styles.settingItemText}>Termini e Condizioni</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#0D0140" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.settingCard}>
+                <TouchableOpacity style={styles.settingItemRow} onPress={() => openSubModal('policy')}>
+                  <View style={styles.settingItemLeft}>
+                    <Ionicons name="shield-half" size={22} color="#0D0140" />
+                    <Text style={styles.settingItemText}>Privacy Policy</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#0D0140" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.settingCard}>
+                <TouchableOpacity 
+                   style={styles.settingItemRow} 
+                  onPress={() => Linking.openURL('https://forms.gle/DYzoUcJE3ch29WJF8')}
+                >
+                  <View style={styles.settingItemLeft}>
+                    <Ionicons name="chatbubble-ellipses" size={22} color="#0D0140" />
+                    <Text style={styles.settingItemText}>Feedback</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={18} color="#0D0140" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Tools per i Tester */}
+              {user?.role === 'tester' && (
+                <>
+                  <Text style={styles.settingsSectionTitle}>Per i tester</Text>
+                  <View style={styles.settingCard}>
                     <TouchableOpacity 
-                      style={styles.settingItem}
+                      style={styles.settingItemRow}
                       onPress={() => {
                         NotificationService.sendTestNotification();
                         Alert.alert("Test", "Notifica di test inviata!");
                       }}
                     >
                       <View style={styles.settingItemLeft}>
-                        <Ionicons name="notifications" size={20} color={Colors.warning} />
-                        <Text style={[styles.settingItemText, { color: Colors.warning }]}>Manda notifica di test</Text>
+                        <Ionicons name="notifications" size={22} color="#EBB300" />
+                        <Text style={[styles.settingItemText, { color: '#EBB300' }]}>Manda notifica di test</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={Colors.warning} />
+                      <Ionicons name="chevron-forward" size={20} color="#EBB300" />
                     </TouchableOpacity>
+                  </View>
 
-                    {onResetOnboarding && (
+                  {onResetOnboarding && (
+                    <View style={styles.settingCard}>
                       <TouchableOpacity 
-                        style={styles.settingItem} 
+                        style={styles.settingItemRow} 
                         onPress={() => {
                           Alert.alert(
                             "Reset Onboarding",
@@ -352,68 +404,21 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                         }}
                       >
                         <View style={styles.settingItemLeft}>
-                          <Ionicons name="refresh" size={20} color={Colors.warning} />
-                          <Text style={[styles.settingItemText, { color: Colors.warning }]}>Rifai Onboarding</Text>
+                          <Ionicons name="refresh" size={22} color="#EBB300" />
+                          <Text style={[styles.settingItemText, { color: '#EBB300' }]}>Rifai Onboarding</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={Colors.warning} />
+                        <Ionicons name="chevron-forward" size={20} color="#EBB300" />
                       </TouchableOpacity>
-                    )}
-                  </>
-                )}
-              </View>
+                    </View>
+                  )}
+                </>
+              )}
 
-              <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.lg }]}>Sicurezza e privacy</Text>
-              <View style={styles.settingsSection}>
-                <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('faq')}>
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="help-circle" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>FAQs</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
-                </TouchableOpacity>
+              <View style={{ height: 20 }} />
 
-                <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('privacy')}>
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="shield-checkmark" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>Privacy e Sicurezza</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.lg }]}>Risorse</Text>
-              <View style={styles.settingsSection}>
-                <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('terms')}>
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="document-text" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>Termini e Condizioni</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.settingItem} onPress={() => openSubModal('policy')}>
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="shield-half" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>Privacy Policy</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8f959e" />
-                </TouchableOpacity>
-
+              <View style={[styles.settingCard, { backgroundColor: '#FDECEC' }]}>
                 <TouchableOpacity 
-                  style={styles.settingItem} 
-                  onPress={() => Linking.openURL('https://forms.google.com/your-form-id')}
-                >
-                  <View style={styles.settingItemLeft}>
-                    <Ionicons name="chatbubble-ellipses" size={20} color={Colors.accent} />
-                    <Text style={styles.settingItemText}>Feedback</Text>
-                  </View>
-                  <Ionicons name="open-outline" size={18} color="#8f959e" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={[styles.settingsSection, { marginBottom: 40 }]}>
-                <TouchableOpacity 
-                   style={[styles.settingItem, styles.deleteItem]}
+                   style={styles.settingItemRow}
                   onPress={() => {
                     Alert.alert(
                       "Cancella Account",
@@ -427,7 +432,7 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                             if (onDeleteAccount) {
                               try {
                                 await onDeleteAccount();
-                                onClose(); // Chiude il profilo prima del logout/reset
+                                onClose();
                               } catch (e) {
                                 Alert.alert("Errore", "Impossibile cancellare l'account in questo momento.");
                               }
@@ -438,8 +443,10 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
                     );
                   }}
                 >
-                  <Text style={[styles.settingItemText, styles.deleteText]}>Cancella l'account</Text>
-                  <Ionicons name="chevron-forward" size={20} color={Colors.danger} />
+                  <View style={styles.settingItemLeft}>
+                    <Text style={[styles.settingItemText, { color: '#E53E3E' }]}>Cancella l'account</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#E53E3E" />
                 </TouchableOpacity>
               </View>
 
@@ -893,32 +900,38 @@ const styles = StyleSheet.create({
   },
   settingsContent: {
     flex: 1,
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: Spacing.xl,
+    paddingHorizontal: Spacing.md,
   },
-  settingsSection: {
-    marginBottom: Spacing.xl,
+  settingsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 20,
+    marginBottom: 12,
+    marginLeft: 4,
   },
-  settingItem: {
+  settingCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 12,
+    ...Shadow.light,
+  },
+  settingItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    padding: 16,
   },
   settingItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   settingItemText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#0D0140',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   settingDivider: {
     height: 1,
@@ -1075,10 +1088,10 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
-    color: Colors.secondary,
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 12,
     marginVertical: 20,
-    opacity: 0.5,
+    fontWeight: '600',
   },
   deleteItem: {
     borderBottomWidth: 0,
