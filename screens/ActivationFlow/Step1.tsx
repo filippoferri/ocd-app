@@ -10,11 +10,6 @@ import {
 } from 'phosphor-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ButtonNav from '../../components/ButtonNav';
-import { Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import AuthService from '../../services/AuthService';
-import { PREDEFINED_AVATARS } from '../../components/AvatarPicker';
-import { Colors } from '../../config/Theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -285,28 +280,11 @@ export default function Step1({ onNext, onClose, onBack }: Step1Props) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 10, paddingBottom: 10 }]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatar}>
-            {(() => {
-              const user = AuthService.getUser();
-              if (user?.avatar_url) {
-                const predefined = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
-                if (predefined) {
-                  return <Image source={predefined.source} style={styles.avatarImage} />;
-                }
-                return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
-              }
-              return <Ionicons name="person" size={28} color="#666" />;
-            })()}
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <X size={24} color="#333" weight="bold" />
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.headerLeft} />
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <X size={24} color="#333" weight="bold" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -693,32 +671,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     backgroundColor: '#f8f7ff',
+    paddingBottom: 10,
   },
   headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerRight: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
+    width: 40,
   },
   closeButton: {
     padding: 8,
