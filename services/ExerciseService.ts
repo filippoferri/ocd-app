@@ -274,6 +274,30 @@ class ExerciseService {
       ],
       category: 'mindfulness',
       difficulty: 'easy'
+    },
+    {
+      id: 'radicamento-sensoriale',
+      name: 'Radicamento sensoriale',
+      introText: 'Il radicamento sensoriale (Tecnica 5-4-3-2-1) è un metodo efficace per interrompere i cicli di pensieri negativi, ansia o panico. Ti aiuta a riconnetterti con la realtà circostante attraverso i tuoi cinque sensi, riportando la mente nel momento presente e calmando il sistema nervoso.',
+      benefitsText: '• Interrompe i pensieri intrusivi e il rimuginio\n• Riduce rapidamente l\'ansia acuta\n• Riporta la consapevolezza al momento presente\n• Calma il sistema nervoso simpatico\n• Fornisce uno strumento pratico e veloce da usare ovunque',
+      objectiveText: 'Riconnettersi con il presente e calmare l\'ansia attraverso i sensi',
+      duration: 3,
+      image: './assets/exercises/grounding.png',
+      steps: [
+        {
+          id: 'preparation',
+          type: 'default',
+          title: 'Azioni preparatorie',
+          content: [
+            'Siediti comodamente o resta in piedi, sentendo il contatto con il suolo',
+            'Fai un respiro profondo e consapevole',
+            'Preparati a esplorare l\'ambiente intorno a te senza giudizio',
+            'Segui le indicazioni visive per individuare elementi specifici tramite i tuoi sensi'
+          ]
+        }
+      ],
+      category: 'mindfulness',
+      difficulty: 'easy'
     }
   ];
 

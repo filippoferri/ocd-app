@@ -26,6 +26,7 @@ const imageMap: { [key: string]: any } = {
   'respirazione-consapevole': require('../assets/exercises/respirazione-consapevole.png'),
   'gratitudine-sera': require('../assets/exercises/gratitudine-sera.png'),
   'meditazione-guidata': require('../assets/exercises/meditazione-guidata.png'),
+  'radicamento-sensoriale': require('../assets/exercises/grounding.png'),
 };
 
 const getExerciseImagePNG = (imagePath: string) => {
@@ -150,7 +151,7 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ onExercisePress }) => {
         >
           <View style={styles.exercisesGrid}>
             {exercises
-              .filter((ex) => !['respirazione-consapevole', 'body-scan', 'meditazione-guidata'].includes(ex.id))
+              .filter((ex) => !['respirazione-consapevole', 'body-scan', 'meditazione-guidata', 'radicamento-sensoriale'].includes(ex.id))
               .map((ex) => renderExerciseCard(ex))}
           </View>
 
@@ -160,7 +161,7 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ onExercisePress }) => {
 
           <View style={styles.exercisesGrid}>
             {exercises
-              .filter((ex) => ['respirazione-consapevole', 'body-scan', 'meditazione-guidata'].includes(ex.id))
+              .filter((ex) => ['respirazione-consapevole', 'body-scan', 'meditazione-guidata', 'radicamento-sensoriale'].includes(ex.id))
               .map((ex) => renderExerciseCard(ex))}
           </View>
         </ScrollView>

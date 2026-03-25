@@ -928,6 +928,313 @@ const bodyScanStyles = StyleSheet.create({
   },
 });
 
+// ─── Grounding Screen (5-4-3-2-1) ──────────────────────────────────────────
+
+interface GroundingScreenProps {
+  onClose: () => void;
+  onComplete: () => void;
+  onAbort: () => void;
+  initialIsPlaying: boolean;
+}
+
+const GROUNDING_PHASES = [
+  { id: 5, label: 'Vedere', guide: 'Individua 5 cose che puoi vedere\n(es. una sedia, un quadro, la luce)', duration: 36 },
+  { id: 4, label: 'Toccare', guide: 'Individua 4 cose che puoi toccare\n(es. i pantaloni, la sedia, il pavimento)', duration: 36 },
+  { id: 3, label: 'Sentire', guide: 'Individua 3 suoni che puoi sentire\n(es. il respiro, il traffico, un ticchettio)', duration: 36 },
+  { id: 2, label: 'Percepire', guide: 'Individua 2 odori che puoi percepire\n(es. profumo, caffè, l\'aria)', duration: 36 },
+  { id: 1, label: 'Assaporare', guide: 'Individua 1 cosa buona di te\no un sapore che senti in bocca', duration: 36 },
+];
+
+const GroundingScreen: React.FC<GroundingScreenProps> = ({ onClose, onComplete, onAbort, initialIsPlaying }) => {
+  const insets = useSafeAreaInsets();
+  const TOTAL_SECONDS = 180; // 3 minutes
+  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [showExitMenu, setShowExitMenu] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const textFadeAnim = useRef(new Animated.Value(1)).current;
+  
+  const timeElapsed = useRef(0);
+  const [currentPhaseIdx, setCurrentPhaseIdx] = useState(0);
+  const audioRef = useRef<Audio.Sound | null>(null);
+
+  const CIRCLE_SIZE = width * 0.7;
+  const STROKE_WIDTH = 4;
+  const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+  // Caricamento Audio (riuso Body Scan)
+  useEffect(() => {
+    let isMounted = true;
+    const loadAudio = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/audio/body-scan.mp3'),
+          { isLooping: true, volume: 1.0 }
+        );
+        if (!isMounted) { sound.unloadAsync(); return; }
+        audioRef.current = sound;
+        if (isPlaying && musicEnabled) await sound.playAsync();
+      } catch (e) {
+        console.error('Error loading grounding audio', e);
+      }
+    };
+    loadAudio();
+    return () => {
+      isMounted = false;
+      if (audioRef.current) audioRef.current.unloadAsync();
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncAudio = async () => {
+      if (!audioRef.current) return;
+      try {
+        if (isPlaying && musicEnabled) await audioRef.current.playAsync();
+        else await audioRef.current.pauseAsync();
+      } catch (e) {}
+    };
+    syncAudio();
+  }, [isPlaying, musicEnabled]);
+
+  // Timer e Animazione
+  useEffect(() => {
+    let lastTime = Date.now();
+    let frameId: number;
+
+    const tick = () => {
+      if (!isPlaying || isFinishing) return;
+
+      const now = Date.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      timeElapsed.current += delta;
+
+      const secondsElapsed = timeElapsed.current / 1000;
+      const secondsLeft = Math.max(0, TOTAL_SECONDS - Math.floor(secondsElapsed));
+      setTimeLeft(secondsLeft);
+
+      const progress = Math.min(1, secondsElapsed / TOTAL_SECONDS);
+      progressAnim.setValue(progress);
+
+      // Cambio fase
+      const phaseIdx = Math.min(GROUNDING_PHASES.length - 1, Math.floor(secondsElapsed / 36));
+      if (phaseIdx !== currentPhaseIdx) {
+        setCurrentPhaseIdx(phaseIdx);
+        Animated.sequence([
+          Animated.timing(textFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(textFadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ]).start();
+      }
+
+      if (secondsElapsed >= TOTAL_SECONDS) {
+        setIsFinishing(true);
+        Animated.timing(contentOpacity, { toValue: 0, duration: 1500, useNativeDriver: true }).start(() => onComplete());
+        return;
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    if (isPlaying) {
+      lastTime = Date.now();
+      frameId = requestAnimationFrame(tick);
+    }
+    return () => { if (frameId) cancelAnimationFrame(frameId); };
+  }, [isPlaying, isFinishing]);
+
+  const toggleMusic = async () => {
+    const next = !musicEnabled;
+    setMusicEnabled(next);
+    if (!next && audioRef.current) await audioRef.current.pauseAsync();
+    else if (next && audioRef.current && isPlaying) await audioRef.current.playAsync();
+  };
+
+  const handleStop = async () => {
+    if (audioRef.current) await audioRef.current.stopAsync();
+    onComplete();
+  };
+
+  const currentPhase = GROUNDING_PHASES[currentPhaseIdx];
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+  return (
+    <View style={groundingStyles.container}>
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+        {/* Header */}
+        <View style={[groundingStyles.header, { paddingTop: insets.top + 20 }]}>
+          <TouchableOpacity onPress={onClose} style={groundingStyles.headerIcon}>
+            <ArrowLeft color="white" size={28} />
+          </TouchableOpacity>
+          <Text style={groundingStyles.timeText}>{timeStr}</Text>
+          <TouchableOpacity onPress={() => setShowExitMenu(true)} style={groundingStyles.headerIcon}>
+            <X color="white" size={28} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Animation Area */}
+        <View style={groundingStyles.animationContainer}>
+          <View style={{ width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center' }}>
+            <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
+              {/* Background Circle */}
+              <Circle
+                cx={CIRCLE_SIZE / 2}
+                cy={CIRCLE_SIZE / 2}
+                r={RADIUS}
+                stroke="rgba(255, 255, 255, 0.2)"
+                strokeWidth={1}
+                fill="none"
+              />
+              {/* Progress Circle */}
+              <AnimatedCircle
+                cx={CIRCLE_SIZE / 2}
+                cy={CIRCLE_SIZE / 2}
+                r={RADIUS}
+                stroke="white"
+                strokeWidth={STROKE_WIDTH}
+                fill="none"
+                strokeDasharray={CIRCUMFERENCE}
+                strokeDashoffset={progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [CIRCUMFERENCE, 0]
+                })}
+                strokeLinecap="round"
+              />
+            </Svg>
+          </View>
+        </View>
+
+        {/* Testo guida */}
+        <Animated.View style={[groundingStyles.guideContainer, { opacity: textFadeAnim }]}>
+          <Text style={groundingStyles.guideText}>{currentPhase.guide}</Text>
+        </Animated.View>
+
+        {/* Controls */}
+        <View style={[groundingStyles.footer, { paddingBottom: Math.max(40, insets.bottom + 20) }]}>
+          <TouchableOpacity onPress={toggleMusic} style={groundingStyles.secondaryBtn}>
+            {musicEnabled ? <MusicNotesMinus color="white" size={24} weight="fill" /> : <MusicNotesPlus color="white" size={24} weight="fill" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsPlaying(!isPlaying)} style={groundingStyles.playBtn}>
+            {isPlaying ? <Pause color="#8B7CF6" size={36} weight="fill" /> : <Play color="#8B7CF6" size={36} weight="fill" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleStop} style={groundingStyles.secondaryBtn}>
+            <PhosphorStop color="white" size={24} weight="fill" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      <Modal visible={showExitMenu} transparent animationType="fade">
+        <View style={breathingStyles.modalOverlay}>
+          <View style={breathingStyles.actionSheet}>
+            <View style={breathingStyles.actionSheetGroup}>
+              <TouchableOpacity style={breathingStyles.actionButtonDestructive} onPress={async () => {
+                setShowExitMenu(false);
+                if (audioRef.current) await audioRef.current.stopAsync();
+                onAbort();
+              }}>
+                <Text style={breathingStyles.actionTextDestructive}>Abbandona</Text>
+              </TouchableOpacity>
+              <View style={breathingStyles.actionSeparator} />
+              <TouchableOpacity style={breathingStyles.actionButton} onPress={() => { setShowExitMenu(false); handleStop(); }}>
+                <Text style={groundingStyles.actionText}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[breathingStyles.actionSheetGroup, breathingStyles.actionButton, { marginTop: 8 }]} onPress={() => setShowExitMenu(false)}>
+              <Text style={groundingStyles.actionTextBold}>Cancella</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+
+
+const groundingStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8B7CF6',
+    zIndex: 1000,
+    justifyContent: 'space-between',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  timeText: { color: 'white', fontSize: 24, fontWeight: '500' },
+  headerIcon: { padding: 8 },
+  animationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  guideContainer: {
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 100,
+  },
+  guideText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 24,
+    letterSpacing: 0.3,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  secondaryBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
+    fontSize: 20,
+    color: '#007AFF', // iOS blue
+    padding: 18,
+    textAlign: 'center',
+  },
+  actionTextBold: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: '600',
+    padding: 18,
+    textAlign: 'center',
+  },
+});
+
+
 // ─── ExerciseDetailScreen ───────────────────────────────────────────────────
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
@@ -951,6 +1258,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const audioRef = useRef<Audio.Sound | null>(null);
   const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
   const [showBodyScanAnimation, setShowBodyScanAnimation] = useState(false);
+  const [showGroundingAnimation, setShowGroundingAnimation] = useState(false);
   const breathingScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -979,6 +1287,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
     if (exercise.id === 'body-scan' && currentStep === 1) {
       setShowBodyScanAnimation(true);
+      setIsPlaying(true);
+      return;
+    }
+
+    if (exercise.id === 'radicamento-sensoriale' && currentStep === 1) {
+      setShowGroundingAnimation(true);
       setIsPlaying(true);
       return;
     }
@@ -1181,6 +1495,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     setIsCompleting(false);
     setShowBreathingAnimation(false);
     setShowBodyScanAnimation(false);
+    setShowGroundingAnimation(false);
     setShowSuccessScreen(true);
   };
 
@@ -1422,6 +1737,17 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
           <BodyScanScreen
             onAbort={onClose}
             onClose={() => setShowBodyScanAnimation(false)}
+            onComplete={handleCompleteExercise}
+            initialIsPlaying={isPlaying}
+          />
+        </View>
+      )}
+
+      {showGroundingAnimation && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, elevation: 10 }]}>
+          <GroundingScreen
+            onAbort={onClose}
+            onClose={() => setShowGroundingAnimation(false)}
             onComplete={handleCompleteExercise}
             initialIsPlaying={isPlaying}
           />
