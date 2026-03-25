@@ -87,35 +87,45 @@ class AuthService {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    console.log('🔍 AuthService: Recupero sessione...');
+    console.log('🔍 [AuthService] Recupero sessione...');
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
+      
       if (error) {
-        console.error('❌ AuthService: Errore getSession:', error.message);
+        console.error('❌ [AuthService] Errore getSession:', error.message);
         return null;
       }
+      
       if (!session?.user) {
-        console.log('ℹ️ AuthService: Nessuna sessione trovata');
+        console.log('ℹ️ [AuthService] Nessuna sessione trovata');
         this.currentUser = null;
         return null;
       }
-      console.log('✅ AuthService: Sessione trovata per', session.user.email);
+      
+      console.log('✅ [AuthService] Sessione trovata per:', session.user.email);
       
       // Fetch profile to get manual avatar_url override
-      const { data: profile } = await supabase
+      // Usiamo una query semplice che non solleva eccezioni se il record non esiste
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('avatar_url')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
+
+      if (profileError) {
+        console.warn('⚠️ [AuthService] Errore (non critico) recupero profilo:', profileError.message);
+      }
 
       this.currentUser = this.mapSessionUser(session.user);
+      
       if (profile?.avatar_url) {
+        console.log('🖼️ [AuthService] Avatar personalizzato trovato nel profilo:', profile.avatar_url);
         this.currentUser.avatar_url = profile.avatar_url;
       }
       
       return this.currentUser;
     } catch (e) {
-      console.error('❌ AuthService: Errore imprevisto in getCurrentUser:', e);
+      console.error('❌ [AuthService] Errore imprevisto in getCurrentUser:', e);
       return null;
     }
   }

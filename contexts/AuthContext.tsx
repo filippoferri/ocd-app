@@ -81,32 +81,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserData = async (userId: string) => {
     if (loadingUserIds.current.has(userId)) {
-      console.log('⏳ AuthContext: Caricamento già in corso per:', userId);
+      console.log('⏳ [AuthContext] Caricamento già in corso per:', userId);
       return;
     }
     
     loadingUserIds.current.add(userId);
-    console.log('🔄 AuthContext: Caricamento dati utente per:', userId);
+    console.log('🔄 [AuthContext] Caricamento dati utente per:', userId);
+    
     try {
-      // In parallelo per velocità
-      const [activities, completed] = await Promise.all([
-        AuthService.getUserActivities(),
-        AuthService.hasCompletedOnboarding(userId)
+      // Impostiamo un timeout per i caricamenti dati per evitare deadlock
+      const dataPromise = Promise.all([
+        AuthService.getUserActivities().catch(e => {
+          console.error('❌ [AuthContext] Errore getUserActivities:', e);
+          return [];
+        }),
+        AuthService.hasCompletedOnboarding(userId).catch(e => {
+          console.error('❌ [AuthContext] Errore hasCompletedOnboarding:', e);
+          return false;
+        })
       ]);
 
-      console.log('✅ AuthContext: Dati caricati. Onboarding:', completed);
+      // Timeout di 4 secondi per il caricamento dei dati specifici
+      const timeoutPromise = new Promise<[UserActivity[], boolean]>((resolve) => 
+        setTimeout(() => resolve([[], false]), 4000)
+      );
+
+      const [activities, completed] = await Promise.race([dataPromise, timeoutPromise]);
+
+      console.log('✅ [AuthContext] Dati caricati. Onboarding completato:', completed);
       setUserActivities(activities);
-      console.log('🔄 AuthContext: Settaggio onboardingCompleted a', completed);
       setOnboardingCompleted(completed);
       
       if (completed) {
-        const onboardingData = await AuthService.getOnboardingData();
-        if (onboardingData) {
-          setCurrentMood(onboardingData.currentMood);
+        try {
+          const onboardingData = await AuthService.getOnboardingData();
+          if (onboardingData) {
+            setCurrentMood(onboardingData.currentMood);
+          }
+        } catch (e) {
+          console.warn('⚠️ [AuthContext] Errore recupero mood da onboarding:', e);
         }
       }
     } catch (error) {
-      console.error('❌ AuthContext: Errore nel caricamento dati utente:', error);
+      console.error('❌ [AuthContext] Errore fatale in loadUserData:', error);
+      // Fallback sicuro per non bloccare l'interfaccia
+      setOnboardingCompleted(false);
     } finally {
       loadingUserIds.current.delete(userId);
     }
@@ -202,22 +221,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Unified auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔑 AuthContext: Evento auth rilevato:', event, !!session);
+      console.log(`🔑 [AuthContext] Auth event: ${event}`, !!session ? '✅ Sessione presente' : '❌ No session');
       
       if (session?.user) {
-        console.log('✅ AuthContext: Sessione attiva per', session.user.email);
         const mappedUser: User = {
           id: session.user.id,
-          name: session.user.user_metadata?.name || '',
+          name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || '',
           email: session.user.email || '',
-          avatar_url: session.user.user_metadata?.avatar_url,
+          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
           createdAt: session.user.created_at,
+          provider: session.user.app_metadata?.provider || session.user.identities?.[0]?.provider,
         };
-        setCurrentUser(mappedUser);
-        await loadUserData(session.user.id); 
+        
+        // Evitiamo ricaricamenti inutili se l'utente è lo stesso
+        if (!currentUser || currentUser.id !== mappedUser.id) {
+          setCurrentUser(mappedUser);
+          await loadUserData(session.user.id); 
+        }
         setIsLoading(false);
       } else if (event === 'SIGNED_OUT') {
-        console.log('ℹ️ AuthContext: Utente disconnesso');
         setCurrentUser(null);
         setUserActivities([]);
         setOnboardingCompleted(null);
@@ -225,9 +247,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTestResult(null);
         setCurrentMood(null);
         setIsLoading(false);
-      } else if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+      } else if (event === 'INITIAL_SESSION') {
         if (!session) {
-          console.log('ℹ️ AuthContext: Sessione inattiva');
+          console.log('ℹ️ [AuthContext] Nessuna sessione iniziale trovata');
           setIsLoading(false);
         }
       }
@@ -235,13 +257,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initSession();
 
-    // Safety timeout: sblocca il caricamento dopo 5 secondi qualunque cosa accada
+    // Safety timeout ridotto e più visibile
     const timer = setTimeout(() => {
       if (isLoading) {
-        console.warn('⚠️ AuthContext: Timeout sicurezza raggiunto. Sblocco manuale...');
+        console.warn('🚨 [AuthContext] TIMEOUT SICUREZZA RAGGIUNTO! Sblocco forzato UI.');
         setIsLoading(false);
       }
-    }, 5000);
+    }, 6000);
 
     return () => {
       subscription.unsubscribe();

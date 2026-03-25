@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, TextInput, Dimensions, Modal } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, TextInput, Dimensions, Modal, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Shadow } from '../config/Theme';
@@ -317,14 +317,25 @@ export default function AccountScreen({ onClose, onLogout, userEmail = "utente@e
           <TouchableOpacity 
             style={[styles.card, styles.logoutCard]} 
             onPress={() => {
-              Alert.alert(
-                "Esci",
-                "Sei sicuro di voler uscire?",
-                [
-                  { text: "Annulla", style: "cancel" },
-                  { text: "Esci", style: "destructive", onPress: onLogout }
-                ]
-              );
+              const handleConfirmLogout = () => {
+                console.log('🚪 [AccountScreen] Logout confermato');
+                onLogout();
+              };
+
+              if (Platform.OS === 'web') {
+                if (window.confirm("Sei sicuro di voler uscire?")) {
+                  handleConfirmLogout();
+                }
+              } else {
+                Alert.alert(
+                  "Esci",
+                  "Sei sicuro di voler uscire?",
+                  [
+                    { text: "Annulla", style: "cancel" },
+                    { text: "Esci", style: "destructive", onPress: handleConfirmLogout }
+                  ]
+                );
+              }
             }}
           >
             <View style={styles.cardHeader}>

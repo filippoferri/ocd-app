@@ -23,8 +23,7 @@ import { Asset } from 'expo-asset';
 import Svg, { Circle, Path, G, ClipPath, Defs, Rect, Mask, LinearGradient, Stop, SvgXml, RadialGradient } from 'react-native-svg';
 import { Exercise, ExerciseStep, ExerciseProgress } from '../types/Exercise';
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
-import authService from '../services/AuthService';
-import DailyExerciseService from '../services/DailyExerciseService';
+import WorkoutService from '../services/WorkoutService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ExerciseDetailScreenProps {
@@ -1089,50 +1088,35 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const handleCompleteExercise = async () => {
     // Stop audio and animation if active
     if (audioRef.current) {
-      await audioRef.current.stopAsync();
+      try { await audioRef.current.stopAsync(); } catch (e) {}
       setIsPlaying(false);
     }
-    // Breathing screen will be hidden right after setting success true!
 
     setIsCompleting(true);
     try {
-      const progress: ExerciseProgress = {
-        exerciseId: exercise.id,
-        userId: 'current-user',
-        completedAt: new Date(),
-        stepResponses,
-      };
-      
-      await ExerciseServiceAdapter.saveExerciseProgress(progress);
-      
-      // Save exercise as diary activity
-      const now = new Date();
-      // Usa data locale (non UTC) per evitare sfasamento di fuso orario
-      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const userText = Object.values(stepResponses)
         .filter((t) => t && t.trim().length > 0)
         .join('\n\n');
 
-      const activity = {
-        id: `exercise_${exercise.id}_${Date.now()}`,
-        date: localDate,
-        time: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        type: 'ossessione' as const,
-        symptom: exercise.name,
-        intensity: 'completato',
-        description: userText
-          ? `Esercizio completato con successo.\n\n${userText}`
-          : `Esercizio completato con successo.`,
-      };
-      
-      await authService.addActivity(activity);
+      const notes = userText 
+        ? `Esercizio completato con successo.\n\n${userText}`
+        : `Esercizio completato con successo.`;
 
-      // Mark as completed in DailyExerciseService so home removes it immediately
-      await DailyExerciseService.markExerciseCompleted(exercise.id, localDate);
+      // 🔄 Unified call via WorkoutService
+      await WorkoutService.completeExercise(exercise, notes);
+      
+      // Also save raw progress via adapter (for future cloud sync)
+      const progress: ExerciseProgress = {
+        exerciseId: exercise.id,
+        userId: currentUser?.id || 'guest',
+        completedAt: new Date(),
+        stepResponses,
+      };
+      await ExerciseServiceAdapter.saveExerciseProgress(progress);
       
       setShowSuccessScreen(true);
     } catch (error) {
-      console.error('Error completing exercise:', error);
+      console.error('❌ [ExerciseDetail] Errore completamento esercizio:', error);
       Alert.alert(
         'Errore',
         'Si è verificato un errore nel salvare il progresso. Riprova.',
