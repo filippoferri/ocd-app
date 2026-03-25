@@ -10,7 +10,7 @@ export interface DailySlotResult {
 
 // Exercise pools per slot
 const MORNING_POOL = ['gratitudine-mattino'];
-const DAY_POOL = ['scrittura', 'respirazione-consapevole', 'meditazione-guidata'];
+const DAY_POOL = ['scrittura', 'respirazione-consapevole', 'respirazione-triangolare'];
 const EVENING_POOL = ['gratitudine-sera'];
 
 const STORAGE_KEY_SELECTION = 'dailyExerciseSelection';

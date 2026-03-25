@@ -237,39 +237,25 @@ class ExerciseService {
       difficulty: 'easy'
     },
     {
-      id: 'meditazione-guidata',
-      name: 'Meditazione guidata',
-      introText: 'Una sessione di meditazione profonda per rilassare mente e corpo attraverso la visualizzazione di una luce dorata che si espande in tutto il corpo, favorendo calma e connessione interiore.',
-      benefitsText: '• Riduce stress e tensioni profonde\n• Favorisce il rilassamento completo\n• Migliora la connessione mente-corpo\n• Sviluppa la gratitudine e la pace interiore\n• Aumenta la consapevolezza del momento presente',
-      objectiveText: 'Raggiungere uno stato di calma profonda e connessione con il proprio centro autentico',
-      duration: 12,
-      image: './assets/exercises/meditazione-guidata.png',
+      id: 'respirazione-triangolare',
+      name: 'Mindfulness',
+      introText: 'Una tecnica di mindfulness in 3 fasi per calmare il sistema nervoso e ridurre l\'ansia. Visualizza un triangolo mentre respiri: inspira per 4 secondi, trattieni per 4 secondi, espira per 4 secondi.',
+      benefitsText: '• Calma il sistema nervoso in pochi minuti\n• Riduce ansia e attacchi di panico\n• Favorisce la concentrazione e la chiarezza mentale\n• Regola il ritmo cardiaco\n• Tecnica utilizzabile ovunque e in qualsiasi momento',
+      objectiveText: 'Calmare il sistema nervoso attraverso la respirazione ritmica triangolare',
+      duration: 3,
+      image: './assets/exercises/triangle-breathing.png',
       steps: [
         {
-          id: 'introduzione',
+          id: 'preparazione',
           type: 'default',
-          title: 'Introduzione alla meditazione',
+          title: 'Preparazione alla respirazione',
           content: [
-            'Trova una posizione comoda, seduto o sdraiato',
-            'Chiudi dolcemente gli occhi',
-            'Inizia a respirare lentamente e profondamente',
-            'Permetti al tuo corpo di rilassarsi completamente',
-            'Lascia andare ogni tensione e preoccupazione'
+            'Siediti in una posizione comoda con la schiena dritta',
+            'Chiudi gli occhi o abbassa lo sguardo',
+            'Rilassa le spalle e la mascella',
+            'Porta l\'attenzione al tuo respiro naturale',
+            'Quando sei pronto, segui il triangolo luminoso'
           ]
-        },
-        {
-          id: 'meditazione-audio',
-          type: 'withaudio',
-          title: 'Meditazione con luce dorata',
-          content: [
-            'Segui la voce guida per la meditazione completa',
-            'Visualizza una luce dorata nel centro del petto',
-            'Lascia che la luce si espanda in tutto il corpo',
-            'Resta in connessione con la sensazione di pace',
-            'Concludi con gratitudine per questo momento'
-          ],
-          audioFile: './assets/audio/meditation-guided.mp3',
-          duration: 600
         }
       ],
       category: 'mindfulness',

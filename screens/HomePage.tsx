@@ -86,8 +86,8 @@ const getExerciseImagePNG = (imagePath: string) => {
       return require('../assets/exercises/respirazione-consapevole.png');
     case 'scrittura':
       return require('../assets/exercises/scrittura.png');
-    case 'meditazione-guidata':
-      return require('../assets/exercises/meditazione-guidata.png');
+    case 'respirazione-triangolare':
+      return require('../assets/exercises/triangle-breathing.png');
     case 'success':
       return require('../assets/exercises/success.png');
     default:

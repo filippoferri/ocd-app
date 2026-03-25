@@ -928,6 +928,390 @@ const bodyScanStyles = StyleSheet.create({
   },
 });
 
+// ─── Triangle Breathing Screen ─────────────────────────────────────────────
+
+interface TriangleBreathingScreenProps {
+  onClose: () => void;
+  onComplete: () => void;
+  onAbort: () => void;
+  initialIsPlaying: boolean;
+}
+
+const TRIANGLE_PHASES = [
+  { label: 'Inspira', guide: 'Inspira lentamente dal naso' },
+  { label: 'Trattieni', guide: 'Trattieni il respiro' },
+  { label: 'Espira', guide: 'Espira lentamente dalla bocca' },
+];
+
+const SIDE_DURATION = 5000; // 5 seconds per side
+const FULL_CYCLE = SIDE_DURATION * 3; // 15 seconds per full cycle
+
+const TriangleBreathingScreen: React.FC<TriangleBreathingScreenProps> = ({ onClose, onComplete, onAbort, initialIsPlaying }) => {
+  const insets = useSafeAreaInsets();
+  const TOTAL_SECONDS = 180;
+  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [showExitMenu, setShowExitMenu] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [currentPhaseIdx, setCurrentPhaseIdx] = useState(0);
+
+  // Single continuous animated value: 0 → 3 (one full cycle)
+  const cycleProgress = useRef(new Animated.Value(0)).current;
+  const textFadeAnim = useRef(new Animated.Value(1)).current;
+  const triangleScale = useRef(new Animated.Value(1)).current;
+  const audioRef = useRef<Audio.Sound | null>(null);
+  const cycleAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const breatheAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Triangle geometry
+  const TRI_SIZE = width * 0.6;
+  const TRI_HEIGHT = TRI_SIZE * (Math.sqrt(3) / 2);
+  const SVG_PADDING = 40;
+  const SVG_WIDTH = TRI_SIZE + SVG_PADDING * 2;
+  const SVG_HEIGHT = TRI_HEIGHT + SVG_PADDING * 2;
+
+  // Triangle vertices (equilateral, pointing up)
+  const topX = SVG_WIDTH / 2;
+  const topY = SVG_PADDING;
+  const bottomLeftX = SVG_PADDING;
+  const bottomLeftY = SVG_PADDING + TRI_HEIGHT;
+  const bottomRightX = SVG_PADDING + TRI_SIZE;
+  const bottomRightY = SVG_PADDING + TRI_HEIGHT;
+
+  // Audio
+  useEffect(() => {
+    let isMounted = true;
+    const loadAudio = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/audio/body-scan.mp3'),
+          { isLooping: true, volume: 1.0 }
+        );
+        if (!isMounted) { sound.unloadAsync(); return; }
+        audioRef.current = sound;
+        if (isPlaying && musicEnabled) await sound.playAsync();
+      } catch (e) {
+        console.error('Error loading triangle breathing audio', e);
+      }
+    };
+    loadAudio();
+    return () => {
+      isMounted = false;
+      if (audioRef.current) audioRef.current.unloadAsync();
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncAudio = async () => {
+      if (!audioRef.current) return;
+      try {
+        if (isPlaying && musicEnabled) await audioRef.current.playAsync();
+        else await audioRef.current.pauseAsync();
+      } catch (e) {}
+    };
+    syncAudio();
+  }, [isPlaying, musicEnabled]);
+
+  // Timer
+  useEffect(() => {
+    if (!isPlaying || isFinishing) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleFinish();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isPlaying, isFinishing]);
+
+  // Continuous dot animation (0 → 3, loops forever, no gaps)
+  useEffect(() => {
+    if (!isPlaying || isFinishing) {
+      if (cycleAnimRef.current) cycleAnimRef.current.stop();
+      if (breatheAnimRef.current) breatheAnimRef.current.stop();
+      return;
+    }
+
+    // Continuous cycle: 0 → 3 over FULL_CYCLE ms
+    cycleAnimRef.current = Animated.loop(
+      Animated.timing(cycleProgress, {
+        toValue: 3,
+        duration: FULL_CYCLE,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      })
+    );
+    cycleAnimRef.current.start();
+
+    // Breathing scale animation: expand on inhale, hold, contract on exhale
+    breatheAnimRef.current = Animated.loop(
+      Animated.sequence([
+        // Inspira - scale up
+        Animated.timing(triangleScale, {
+          toValue: 1.06,
+          duration: SIDE_DURATION,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        // Trattieni - hold
+        Animated.timing(triangleScale, {
+          toValue: 1.06,
+          duration: SIDE_DURATION,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        // Espira - scale down
+        Animated.timing(triangleScale, {
+          toValue: 1,
+          duration: SIDE_DURATION,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    breatheAnimRef.current.start();
+
+    return () => {
+      if (cycleAnimRef.current) cycleAnimRef.current.stop();
+      if (breatheAnimRef.current) breatheAnimRef.current.stop();
+    };
+  }, [isPlaying, isFinishing]);
+
+  // Track current phase from elapsed time
+  useEffect(() => {
+    if (!isPlaying || isFinishing) return;
+    const phaseTimer = setInterval(() => {
+      const elapsed = (TOTAL_SECONDS - timeLeft) * 1000;
+      const posInCycle = elapsed % FULL_CYCLE;
+      const newPhase = Math.floor(posInCycle / SIDE_DURATION) % 3;
+      setCurrentPhaseIdx(prev => {
+        if (prev !== newPhase) {
+          // Subtle text fade on phase change
+          Animated.sequence([
+            Animated.timing(textFadeAnim, { toValue: 0.3, duration: 150, useNativeDriver: true }),
+            Animated.timing(textFadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+          ]).start();
+          return newPhase;
+        }
+        return prev;
+      });
+    }, 200);
+    return () => clearInterval(phaseTimer);
+  }, [isPlaying, isFinishing, timeLeft]);
+
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    setIsPlaying(false);
+    if (audioRef.current) await audioRef.current.stopAsync();
+    onComplete();
+  };
+
+  const handleStop = () => {
+    handleFinish();
+  };
+
+  const toggleMusic = async () => {
+    setMusicEnabled(prev => !prev);
+  };
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const currentPhase = TRIANGLE_PHASES[currentPhaseIdx];
+
+  // Dot position derived from continuous cycleProgress (0 → 3)
+  // Side 0 (0→1): top → bottom-right
+  // Side 1 (1→2): bottom-right → bottom-left
+  // Side 2 (2→3): bottom-left → top
+  const dotCx = cycleProgress.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [topX, bottomRightX, bottomLeftX, topX],
+  });
+  const dotCy = cycleProgress.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [topY, bottomRightY, bottomLeftY, topY],
+  });
+
+  const AnimatedCircleSvg = Animated.createAnimatedComponent(Circle);
+
+  return (
+    <View style={triangleStyles.container}>
+      {/* Header */}
+      <View style={[triangleStyles.header, { paddingTop: Math.max(20, insets.top) }]}>
+        <TouchableOpacity onPress={() => setShowExitMenu(true)} style={triangleStyles.headerIcon}>
+          <ArrowLeft color="white" size={24} weight="bold" />
+        </TouchableOpacity>
+        <Text style={triangleStyles.timeText}>{formatTime(timeLeft)}</Text>
+        <TouchableOpacity onPress={handleStop} style={triangleStyles.headerIcon}>
+          <X color="white" size={24} weight="bold" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Triangle Animation */}
+      <Animated.View style={[triangleStyles.animationContainer, { transform: [{ scale: triangleScale }] }]}>
+        <Svg width={SVG_WIDTH} height={SVG_HEIGHT}>
+          {/* Filled triangle */}
+          <Path
+            d={`M ${topX} ${topY} L ${bottomRightX} ${bottomRightY} L ${bottomLeftX} ${bottomLeftY} Z`}
+            stroke="rgba(255, 255, 255, 0.35)"
+            strokeWidth={2}
+            fill="rgba(255, 255, 255, 0.3)"
+            strokeLinejoin="round"
+          />
+          {/* Glow dot (outer) */}
+          <AnimatedCircleSvg
+            cx={dotCx}
+            cy={dotCy}
+            r={18}
+            fill="rgba(255, 255, 255, 0.12)"
+          />
+          {/* Glow dot (mid) */}
+          <AnimatedCircleSvg
+            cx={dotCx}
+            cy={dotCy}
+            r={11}
+            fill="rgba(255, 255, 255, 0.3)"
+          />
+          {/* Dot (core) */}
+          <AnimatedCircleSvg
+            cx={dotCx}
+            cy={dotCy}
+            r={6}
+            fill="white"
+          />
+        </Svg>
+      </Animated.View>
+
+      {/* Guide text */}
+      <Animated.View style={[triangleStyles.guideContainer, { opacity: textFadeAnim }]}>
+        <Text style={triangleStyles.phaseLabel}>{currentPhase.label}</Text>
+      </Animated.View>
+
+      {/* Controls */}
+      <View style={[triangleStyles.footer, { paddingBottom: Math.max(40, insets.bottom + 20) }]}>
+        <TouchableOpacity onPress={toggleMusic} style={triangleStyles.secondaryBtn}>
+          {musicEnabled
+            ? <MusicNotesMinus color="white" size={24} weight="fill" />
+            : <MusicNotesPlus color="white" size={24} weight="fill" />}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsPlaying(!isPlaying)} style={triangleStyles.playBtn}>
+          {isPlaying
+            ? <Pause color="#8B7CF6" size={36} weight="fill" />
+            : <Play color="#8B7CF6" size={36} weight="fill" />}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleStop} style={triangleStyles.secondaryBtn}>
+          <PhosphorStop color="white" size={24} weight="fill" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Exit Modal */}
+      <Modal visible={showExitMenu} transparent animationType="fade">
+        <View style={breathingStyles.modalOverlay}>
+          <View style={breathingStyles.actionSheet}>
+            <View style={breathingStyles.actionSheetGroup}>
+              <TouchableOpacity style={breathingStyles.actionButtonDestructive} onPress={async () => {
+                setShowExitMenu(false);
+                if (audioRef.current) await audioRef.current.stopAsync();
+                onAbort();
+              }}>
+                <Text style={breathingStyles.actionTextDestructive}>Abbandona</Text>
+              </TouchableOpacity>
+              <View style={breathingStyles.actionSeparator} />
+              <TouchableOpacity style={breathingStyles.actionButton} onPress={() => { setShowExitMenu(false); handleStop(); }}>
+                <Text style={breathingStyles.actionText}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[breathingStyles.actionSheetGroup, breathingStyles.actionButton, { marginTop: 8 }]} onPress={() => setShowExitMenu(false)}>
+              <Text style={breathingStyles.actionTextBold}>Cancella</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const triangleStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8B7CF6',
+    zIndex: 1000,
+    justifyContent: 'space-between',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 100,
+  },
+  headerIcon: { padding: 8 },
+  timeText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '500',
+  },
+  animationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  guideContainer: {
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    width: '100%',
+    marginTop: -40,
+  },
+  phaseLabel: {
+    color: 'white',
+    fontSize: 26,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  guideText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 24,
+    opacity: 0.8,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 24,
+    paddingTop: 16,
+  },
+  playBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+
 // ─── Grounding Screen (5-4-3-2-1) ──────────────────────────────────────────
 
 interface GroundingScreenProps {
@@ -1259,6 +1643,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
   const [showBodyScanAnimation, setShowBodyScanAnimation] = useState(false);
   const [showGroundingAnimation, setShowGroundingAnimation] = useState(false);
+  const [showTriangleAnimation, setShowTriangleAnimation] = useState(false);
   const breathingScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -1293,6 +1678,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
     if (exercise.id === 'radicamento-sensoriale' && currentStep === 1) {
       setShowGroundingAnimation(true);
+      setIsPlaying(true);
+      return;
+    }
+
+    if (exercise.id === 'respirazione-triangolare' && currentStep === 1) {
+      setShowTriangleAnimation(true);
       setIsPlaying(true);
       return;
     }
@@ -1496,6 +1887,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     setShowBreathingAnimation(false);
     setShowBodyScanAnimation(false);
     setShowGroundingAnimation(false);
+    setShowTriangleAnimation(false);
     setShowSuccessScreen(true);
   };
 
@@ -1503,7 +1895,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     if (currentStep === 0) return null;
     
     let totalDots = exercise.steps.length;
-    if (exercise.id === 'respirazione-consapevole' || exercise.id === 'body-scan') totalDots += 1;
+    if (['respirazione-consapevole', 'body-scan', 'respirazione-triangolare'].includes(exercise.id)) totalDots += 1;
     
     return (
       <View style={styles.headerNavigationDots}>
@@ -1710,7 +2102,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
           >
             <Ionicons 
               name={
-                ((exercise.id === 'respirazione-consapevole' || exercise.id === 'body-scan') && currentStep === 1) 
+                (['respirazione-consapevole', 'body-scan', 'respirazione-triangolare', 'radicamento-sensoriale'].includes(exercise.id) && currentStep === 1) 
                 ? 'arrow-forward' 
                 : (currentStep === allSlides.length - 1 ? "checkmark" : "arrow-forward")
               } 
@@ -1748,6 +2140,17 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
           <GroundingScreen
             onAbort={onClose}
             onClose={() => setShowGroundingAnimation(false)}
+            onComplete={handleCompleteExercise}
+            initialIsPlaying={isPlaying}
+          />
+        </View>
+      )}
+
+      {showTriangleAnimation && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, elevation: 10 }]}>
+          <TriangleBreathingScreen
+            onAbort={onClose}
+            onClose={() => setShowTriangleAnimation(false)}
             onComplete={handleCompleteExercise}
             initialIsPlaying={isPlaying}
           />
