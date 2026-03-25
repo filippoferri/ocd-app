@@ -34,7 +34,7 @@ class WorkoutService {
       const activity: Omit<UserActivity, 'id'> = {
         date: localDate,
         time: timeStr,
-        type: 'esercizio' as const,
+        type: 'exercise' as const,
         symptom: exercise.name,
         intensity: 'completato',
         description: notes || `Esercizio completato: ${exercise.name}`,

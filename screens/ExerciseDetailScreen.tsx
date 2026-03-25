@@ -530,6 +530,23 @@ interface BodyScanScreenProps {
   initialIsPlaying: boolean;
 }
 
+// Body zone guide data
+const BODY_SCAN_ZONES = [
+  { start: 0.00, end: 0.125, label: 'Testa', guide: 'Porta l\'attenzione sulla sommità della testa.\nOsserva ogni sensazione senza giudizio.' },
+  { start: 0.125, end: 0.25, label: 'Viso e collo', guide: 'Osserva la fronte, gli occhi, le guance.\nRilascia ogni tensione nel collo.' },
+  { start: 0.25, end: 0.375, label: 'Spalle e braccia', guide: 'Rilassa le spalle, lasciale cadere dolcemente.\nSenti le braccia diventare pesanti e calde.' },
+  { start: 0.375, end: 0.50, label: 'Petto', guide: 'Senti il ritmo del respiro nel petto.\nOsserva il movimento naturale del torace.' },
+  { start: 0.50, end: 0.625, label: 'Addome', guide: 'Porta la consapevolezza all\'addome.\nOsserva come si espande e si contrae.' },
+  { start: 0.625, end: 0.75, label: 'Zona lombare', guide: 'Osserva la zona lombare e i fianchi.\nLascia andare ogni tensione accumulata.' },
+  { start: 0.75, end: 0.875, label: 'Gambe', guide: 'Scorri lungo le cosce e le ginocchia.\nOsserva il peso delle gambe.' },
+  { start: 0.875, end: 1.00, label: 'Piedi', guide: 'Porta l\'attenzione fino alla punta dei piedi.\nSenti il contatto con il suolo.' },
+];
+
+const getBodyZone = (progress: number) => {
+  const zone = BODY_SCAN_ZONES.find(z => progress >= z.start && progress < z.end);
+  return zone || BODY_SCAN_ZONES[BODY_SCAN_ZONES.length - 1];
+};
+
 const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, onAbort, initialIsPlaying }) => {
   const insets = useSafeAreaInsets();
   const TOTAL_SECONDS = 480; // 8 minutes
@@ -538,12 +555,17 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [showExitMenu, setShowExitMenu] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [guideText, setGuideText] = useState(BODY_SCAN_ZONES[0].guide);
+  const [zoneLabel, setZoneLabel] = useState(BODY_SCAN_ZONES[0].label);
   
   const scannerY = useRef(new Animated.Value(0)).current;
-  const scannerDotX = useRef(new Animated.Value(0)).current;
+  const glowPulse = useRef(new Animated.Value(0.4)).current;
+  const glowScale = useRef(new Animated.Value(0.9)).current;
+  const textFadeAnim = useRef(new Animated.Value(1)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
   
   const timeElapsed = useRef(0);
+  const currentZoneRef = useRef('Testa');
   const audioRef = useRef<Audio.Sound | null>(null);
 
   const headerHeight = 120;
@@ -551,7 +573,7 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
   const availableHeight = height - headerHeight - footerHeight;
   const BODY_IMAGE_WIDTH = width * 0.75;
   const BODY_IMAGE_HEIGHT = Math.min(availableHeight * 0.85, BODY_IMAGE_WIDTH * 2.1);
-  const SCANNER_LINE_WIDTH = width;
+  const GLOW_SIZE = 120;
 
   // Caricamento Audio
   useEffect(() => {
@@ -576,7 +598,7 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
     };
   }, []);
 
-  // Controllo riproduzione audio basato su isPlaying e musicEnabled
+  // Controllo riproduzione audio
   useEffect(() => {
     const syncAudio = async () => {
       if (!audioRef.current) return;
@@ -593,25 +615,38 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
     syncAudio();
   }, [isPlaying, musicEnabled]);
 
-  // Loop Animazione Luce (sinistra-destra)
+  // Pulsazione morbida del bagliore
   useEffect(() => {
     if (isPlaying) {
-      Animated.loop(
+      const pulseAnimation = Animated.loop(
         Animated.sequence([
-          Animated.timing(scannerDotX, {
-            toValue: 1, duration: 3000, easing: Easing.inOut(Easing.linear), useNativeDriver: true,
-          }),
-          Animated.timing(scannerDotX, {
-            toValue: -1, duration: 3000, easing: Easing.inOut(Easing.linear), useNativeDriver: true,
-          }),
+          Animated.parallel([
+            Animated.timing(glowPulse, {
+              toValue: 0.7, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+            }),
+            Animated.timing(glowScale, {
+              toValue: 1.15, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(glowPulse, {
+              toValue: 0.3, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+            }),
+            Animated.timing(glowScale, {
+              toValue: 0.85, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+            }),
+          ]),
         ])
-      ).start();
+      );
+      pulseAnimation.start();
+      return () => pulseAnimation.stop();
     } else {
-      scannerDotX.stopAnimation();
+      glowPulse.stopAnimation();
+      glowScale.stopAnimation();
     }
   }, [isPlaying]);
 
-  // Timer e Animazione Linea (alto-basso)
+  // Timer e discesa del bagliore
   useEffect(() => {
     let lastTime = Date.now();
     let frameId: number;
@@ -627,9 +662,19 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
       const secondsLeft = Math.max(0, TOTAL_SECONDS - Math.floor(timeElapsed.current / 1000));
       setTimeLeft(secondsLeft);
 
-      // Progressione linea: 0 -> 1 su 8 minuti
       const progress = Math.min(1, timeElapsed.current / (TOTAL_SECONDS * 1000));
       scannerY.setValue(progress);
+
+      // Aggiorna testo guida con fade
+      const zone = getBodyZone(progress);
+      if (zone.label !== currentZoneRef.current) {
+        currentZoneRef.current = zone.label;
+        Animated.timing(textFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
+          setGuideText(zone.guide);
+          setZoneLabel(zone.label);
+          Animated.timing(textFadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+        });
+      }
 
       // Fade out audio negli ultimi 5 secondi
       if (secondsLeft <= 5 && musicEnabled && audioRef.current) {
@@ -650,6 +695,7 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
     };
 
     if (isPlaying) {
+      lastTime = Date.now();
       frameId = requestAnimationFrame(tick);
     }
 
@@ -688,54 +734,45 @@ const BodyScanScreen: React.FC<BodyScanScreenProps> = ({ onClose, onComplete, on
           </TouchableOpacity>
         </View>
 
-        {/* Body + Scanner */}
+        {/* Body + Glow */}
         <View style={bodyScanStyles.bodyContainer}>
           <View style={[bodyScanStyles.bodyWrapper, { width: width, height: BODY_IMAGE_HEIGHT }]}>
-            {/* Immagine del Corpo - Centrata */}
+            {/* Immagine del Corpo */}
             <Image 
               source={require('../assets/exercises/body.png')} 
               style={{ width: BODY_IMAGE_WIDTH, height: BODY_IMAGE_HEIGHT, resizeMode: 'contain' }} 
             />
 
-            {/* Linea Scanner e Luce - full width sovrapposta */}
+            {/* Bagliore morbido pulsante */}
             <Animated.View 
               style={[
-                bodyScanStyles.scannerTrack,
+                bodyScanStyles.glowContainer,
                 {
-                  transform: [{
-                    translateY: scannerY.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [BODY_IMAGE_HEIGHT * 0.05, BODY_IMAGE_HEIGHT * 0.95]
-                    })
-                  }]
+                  transform: [
+                    {
+                      translateY: scannerY.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [BODY_IMAGE_HEIGHT * 0.02, BODY_IMAGE_HEIGHT * 0.92]
+                      })
+                    },
+                    { scale: glowScale },
+                  ],
+                  opacity: glowPulse,
                 }
               ]}
             >
-              {/* Linea Orizzontale al 100% */}
-              <View style={[bodyScanStyles.scannerLine, { width: width }]} />
-              
-              {/* Luce dello Scanner */}
-              <Animated.View
-                style={[
-                  bodyScanStyles.scannerDotContainer,
-                  {
-                    transform: [{
-                      translateX: scannerDotX.interpolate({
-                        inputRange: [-1, 1],
-                        outputRange: [-width / 2 + 20, width / 2 - 20]
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <Image 
-                  source={require('../assets/exercises/scanner.png')} 
-                  style={{ width: 40, height: 40, resizeMode: 'contain' }} 
-                />
-              </Animated.View>
+              <View style={[bodyScanStyles.glowOuter, { width: GLOW_SIZE * 1.6, height: GLOW_SIZE * 1.6, borderRadius: GLOW_SIZE * 0.8 }]} />
+              <View style={[bodyScanStyles.glowMiddle, { width: GLOW_SIZE, height: GLOW_SIZE, borderRadius: GLOW_SIZE / 2 }]} />
+              <View style={[bodyScanStyles.glowInner, { width: GLOW_SIZE * 0.5, height: GLOW_SIZE * 0.5, borderRadius: GLOW_SIZE * 0.25 }]} />
             </Animated.View>
           </View>
         </View>
+
+        {/* Testo guida */}
+        <Animated.View style={[bodyScanStyles.guideContainer, { opacity: textFadeAnim }]}>
+          <Text style={bodyScanStyles.zoneLabelText}>{zoneLabel}</Text>
+          <Text style={bodyScanStyles.guideText}>{guideText}</Text>
+        </Animated.View>
 
         {/* Controls */}
         <View style={[bodyScanStyles.controlsContainer, { paddingBottom: Math.max(40, insets.bottom + 20) }]}>
@@ -794,8 +831,7 @@ const bodyScanStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    // paddingTop removed from here, handled dynamically
-    zIndex: 100, // Garantisce cliccabilità
+    zIndex: 100,
   },
   headerIcon: { padding: 8 },
   timeText: {
@@ -814,35 +850,59 @@ const bodyScanStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scannerTrack: {
+  glowContainer: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    width: width,
-  },
-  scannerLine: {
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: 'white',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-  },
-  scannerDotContainer: {
-    position: 'absolute',
-    top: -20, // Centra l'immagine alta 40 sulla linea alta 1.5
-    width: 40,
-    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  glowOuter: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  glowMiddle: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+  },
+  glowInner: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+  },
+  guideContainer: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    alignItems: 'center',
+    minHeight: 90,
+  },
+  zoneLabelText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  guideText: {
+    color: 'white',
+    fontSize: 17,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 24,
+    letterSpacing: 0.3,
   },
   controlsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100, // Garantisce cliccabilità
+    zIndex: 100,
   },
   playBtn: {
     width: 80,
@@ -878,7 +938,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   onNavigateToDiary,
 }) => {
   const insets = useSafeAreaInsets();
-  const { setCurrentMood } = useAuth();
+  const { currentUser, setCurrentMood } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
   const [stepResponses, setStepResponses] = useState<{ [stepId: string]: string }>({});
@@ -1093,6 +1153,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     }
 
     setIsCompleting(true);
+
+    // Save in background — success screen shows regardless
     try {
       const userText = Object.values(stepResponses)
         .filter((t) => t && t.trim().length > 0)
@@ -1102,10 +1164,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         ? `Esercizio completato con successo.\n\n${userText}`
         : `Esercizio completato con successo.`;
 
-      // 🔄 Unified call via WorkoutService
       await WorkoutService.completeExercise(exercise, notes);
       
-      // Also save raw progress via adapter (for future cloud sync)
       const progress: ExerciseProgress = {
         exerciseId: exercise.id,
         userId: currentUser?.id || 'guest',
@@ -1113,20 +1173,15 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         stepResponses,
       };
       await ExerciseServiceAdapter.saveExerciseProgress(progress);
-      
-      setShowSuccessScreen(true);
     } catch (error) {
-      console.error('❌ [ExerciseDetail] Errore completamento esercizio:', error);
-      Alert.alert(
-        'Errore',
-        'Si è verificato un errore nel salvare il progresso. Riprova.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsCompleting(false);
-      setShowBreathingAnimation(false);
-      setShowBodyScanAnimation(false);
+      console.error('❌ [ExerciseDetail] Errore salvataggio (non bloccante):', error);
     }
+
+    // ALWAYS show success screen
+    setIsCompleting(false);
+    setShowBreathingAnimation(false);
+    setShowBodyScanAnimation(false);
+    setShowSuccessScreen(true);
   };
 
   const renderNavigationDots = () => {
