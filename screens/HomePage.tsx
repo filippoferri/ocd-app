@@ -88,6 +88,8 @@ const getExerciseImagePNG = (imagePath: string) => {
       return require('../assets/exercises/scrittura.png');
     case 'respirazione-triangolare':
       return require('../assets/exercises/triangle-breathing.png');
+    case 'parcheggio-pensieri':
+      return require('../assets/exercises/thought-parking.png');
     case 'success':
       return require('../assets/exercises/success.png');
     default:

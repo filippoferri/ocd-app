@@ -243,12 +243,16 @@ class ExerciseService {
       benefitsText: '• Calma il sistema nervoso in pochi minuti\n• Riduce ansia e attacchi di panico\n• Favorisce la concentrazione e la chiarezza mentale\n• Regola il ritmo cardiaco\n• Tecnica utilizzabile ovunque e in qualsiasi momento',
       objectiveText: 'Calmare il sistema nervoso attraverso la respirazione ritmica triangolare',
       duration: 3,
+      category: 'mindfulness',
+      isGuided: true,
       image: './assets/exercises/triangle-breathing.png',
       steps: [
         {
-          id: 'preparazione',
-          type: 'default',
+          id: 'step1',
+          type: 'preparation',
           title: 'Preparazione alla respirazione',
+          description: '',
+          instruction: 'Sediti in una posizione comoda, chiudi gli occhi e segui il ritmo luminoso',
           content: [
             'Siediti in una posizione comoda con la schiena dritta',
             'Chiudi gli occhi o abbassa lo sguardo',
@@ -257,9 +261,7 @@ class ExerciseService {
             'Quando sei pronto, segui il triangolo luminoso'
           ]
         }
-      ],
-      category: 'mindfulness',
-      difficulty: 'easy'
+      ]
     },
     {
       id: 'radicamento-sensoriale',
@@ -268,6 +270,8 @@ class ExerciseService {
       benefitsText: '• Interrompe i pensieri intrusivi e il rimuginio\n• Riduce rapidamente l\'ansia acuta\n• Riporta la consapevolezza al momento presente\n• Calma il sistema nervoso simpatico\n• Fornisce uno strumento pratico e veloce da usare ovunque',
       objectiveText: 'Riconnettersi con il presente e calmare l\'ansia attraverso i sensi',
       duration: 3,
+      category: 'mindfulness',
+      isGuided: true,
       image: './assets/exercises/grounding.png',
       steps: [
         {
@@ -281,9 +285,34 @@ class ExerciseService {
             'Segui le indicazioni visive per individuare elementi specifici tramite i tuoi sensi'
           ]
         }
-      ],
-      category: 'mindfulness',
-      difficulty: 'easy'
+      ]
+    },
+    {
+      id: 'parcheggio-pensieri',
+      name: 'Parcheggio dei pensieri',
+      introText: 'Il "Parcheggio dei pensieri" (Thought Parking) ti aiuta a gestire i pensieri intrusivi, le idee improvvise o le distrazioni estraendoli dalla mente e "parcheggiandoli" in un luogo sicuro per occupartene dopo.',
+      benefitsText: '• Favorisce il distacco cognitivo\n• Pulisce la mente dalle distrazioni immediate\n• Allenta la pressione del dover ricordare tutto ora\n• Tiene traccia delle preoccupazioni per affrontarle con lucidità\n• Previene il rimuginio continuo',
+      objectiveText: 'Parcheggiare temporaneamente i pensieri per liberare la memoria di lavoro',
+      duration: 0,
+      category: 'thoughts',
+      isGuided: false,
+      image: './assets/exercises/thought-parking.png',
+      steps: [
+        {
+          id: 'step1',
+          type: 'preparation',
+          title: 'Benvenuto al parcheggio',
+          description: '',
+          instruction: 'Usa questo spazio per depositare i pensieri che non vuoi tenere a mente ora',
+          content: [
+            'Riconosci un pensiero che ti disturba o distrae',
+            'Scrivilo brevemente nella casella di testo',
+            'Assegnagli un\'etichetta veloce',
+            'Schiaccia "Parcheggia" per svuotare la mente',
+            'Torna a questo elenco solo quando vorrai o potrai occupartene'
+          ]
+        }
+      ]
     }
   ];
 

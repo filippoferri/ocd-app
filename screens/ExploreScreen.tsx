@@ -27,6 +27,7 @@ const imageMap: { [key: string]: any } = {
   'gratitudine-sera': require('../assets/exercises/gratitudine-sera.png'),
   'respirazione-triangolare': require('../assets/exercises/triangle-breathing.png'),
   'radicamento-sensoriale': require('../assets/exercises/grounding.png'),
+  'parcheggio-pensieri': require('../assets/exercises/thought-parking.png'),
 };
 
 const getExerciseImagePNG = (imagePath: string) => {
@@ -78,7 +79,9 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ onExercisePress }) => {
           resizeMode="cover"
         />
         <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>{exercise.duration} min</Text>
+          <Text style={styles.durationText}>
+            {exercise.duration > 0 ? `${exercise.duration} min` : 'Libero'}
+          </Text>
         </View>
       </View>
       

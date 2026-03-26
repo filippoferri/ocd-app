@@ -13,7 +13,9 @@ import {
   Easing,
   FlatList,
   Platform,
-  Modal
+  Modal,
+  KeyboardAvoidingView,
+  Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1619,6 +1621,370 @@ const groundingStyles = StyleSheet.create({
 });
 
 
+// ─── ThoughtParkingScreen ─────────────────────────────────────────────────────
+
+interface ParkedThought {
+  id: string;
+  text: string;
+  category: string;
+  timestamp: Date;
+}
+
+const PARKING_CATEGORIES = [
+  { id: 'distrazione', label: 'Distrazione' },
+  { id: 'preoccupazione', label: 'Preoccupazione' },
+  { id: 'da-fare', label: 'Da fare' },
+  { id: 'idea', label: 'Idea' },
+] as const;
+
+const ThoughtParkingScreen: React.FC<{
+  onClose: () => void;
+  onComplete: (thoughts: ParkedThought[]) => void;
+  onAbort: () => void;
+}> = ({ onClose, onComplete, onAbort }) => {
+  const insets = useSafeAreaInsets();
+  const [inputText, setInputText] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('distrazione');
+  const [parkedThoughts, setParkedThoughts] = useState<ParkedThought[]>([]);
+  const [showExitMenu, setShowExitMenu] = useState(false);
+  
+  // Animation for parking
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+  const listRef = useRef<FlatList>(null);
+
+  const handlePark = () => {
+    if (!inputText.trim()) return;
+
+    Keyboard.dismiss();
+
+    // Visual feedback animation
+    Animated.sequence([
+      Animated.timing(bounceAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+      Animated.spring(bounceAnim, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true })
+    ]).start();
+
+    const newThought: ParkedThought = {
+      id: Date.now().toString(),
+      text: inputText.trim(),
+      category: selectedCategory,
+      timestamp: new Date(),
+    };
+
+    setParkedThoughts(prev => [newThought, ...prev]);
+    setInputText('');
+    
+    // Scroll to top of list
+    setTimeout(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }, 100);
+  };
+
+  const renderThought = ({ item }: { item: ParkedThought }) => (
+    <View style={tpStyles.thoughtCard}>
+      <View style={tpStyles.thoughtHeader}>
+        <View style={tpStyles.categoryBadge}>
+          <Text style={tpStyles.categoryText}>
+            {PARKING_CATEGORIES.find(c => c.id === item.category)?.label || item.category}
+          </Text>
+        </View>
+        <Text style={tpStyles.timeText}>
+          {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+      </View>
+      <Text style={tpStyles.thoughtText}>{item.text}</Text>
+    </View>
+  );
+
+  return (
+    <View style={tpStyles.container}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <View style={[tpStyles.header, { paddingTop: insets.top + 20 }]}>
+          <TouchableOpacity onPress={onClose} style={tpStyles.headerIcon}>
+            <ArrowLeft color="#1A1A1A" size={28} />
+          </TouchableOpacity>
+          <Text style={tpStyles.titleText}>Parcheggio</Text>
+          <TouchableOpacity onPress={() => setShowExitMenu(true)} style={tpStyles.headerIcon}>
+            <X color="#1A1A1A" size={28} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={tpStyles.content}>
+          {/* Input Area */}
+          <Animated.View style={[tpStyles.inputSection, { transform: [{ scale: bounceAnim }] }]}>
+            <TextInput
+              style={tpStyles.input}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Cosa ti distrae o preoccupa ora?"
+              placeholderTextColor="#999"
+              multiline
+              maxLength={300}
+              textAlignVertical="top"
+            />
+            
+            <View style={tpStyles.categoryContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tpStyles.categoryScroll}>
+                {PARKING_CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[tpStyles.categoryChip, selectedCategory === cat.id && tpStyles.categoryChipSelected]}
+                    onPress={() => setSelectedCategory(cat.id)}
+                  >
+                    <Text style={[tpStyles.categoryChipText, selectedCategory === cat.id && tpStyles.categoryChipTextSelected]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <TouchableOpacity 
+              style={[tpStyles.parkBtn, !inputText.trim() && tpStyles.parkBtnDisabled]}
+              onPress={handlePark}
+              disabled={!inputText.trim()}
+            >
+              <Text style={tpStyles.parkBtnText}>Parcheggia pensiero</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Parked Thoughts List */}
+          <View style={tpStyles.listSection}>
+            <Text style={tpStyles.listTitle}>
+              Pensieri messi al sicuro ({parkedThoughts.length})
+            </Text>
+            {parkedThoughts.length === 0 ? (
+              <View style={tpStyles.emptyState}>
+                <Text style={tpStyles.emptyStateText}>
+                  La tua mente è libera. Usa l'area sopra per depositare pensieri intrusivi.
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={listRef}
+                data={parkedThoughts}
+                keyExtractor={item => item.id}
+                renderItem={renderThought}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={tpStyles.listContent}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={[tpStyles.footer, { paddingBottom: Math.max(20, insets.bottom) }]}>
+          <TouchableOpacity 
+            style={[tpStyles.finishBtn, parkedThoughts.length === 0 && tpStyles.finishBtnDisabled]} 
+            onPress={() => onComplete(parkedThoughts)}
+            disabled={parkedThoughts.length === 0}
+          >
+            <Text style={tpStyles.finishBtnText}>Concludi ed Esci</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+
+      <Modal visible={showExitMenu} transparent animationType="fade">
+        <View style={breathingStyles.modalOverlay}>
+          <View style={breathingStyles.actionSheet}>
+            <View style={breathingStyles.actionSheetGroup}>
+              <TouchableOpacity style={breathingStyles.actionButtonDestructive} onPress={() => {
+                setShowExitMenu(false);
+                onAbort();
+              }}>
+                <Text style={breathingStyles.actionTextDestructive}>Abbandona senza salvare</Text>
+              </TouchableOpacity>
+              <View style={breathingStyles.actionSeparator} />
+              <TouchableOpacity style={breathingStyles.actionButton} onPress={() => {
+                setShowExitMenu(false);
+                onComplete(parkedThoughts);
+              }}>
+                <Text style={groundingStyles.actionText}>Salva ed Esci</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[breathingStyles.actionSheetGroup, breathingStyles.actionButton, { marginTop: 8 }]} onPress={() => setShowExitMenu(false)}>
+              <Text style={groundingStyles.actionTextBold}>Annulla</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const tpStyles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F5F5F7',
+    zIndex: 1000,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAEAEC',
+    backgroundColor: '#FFFFFF',
+  },
+  titleText: { color: '#1A1A1A', fontSize: 20, fontWeight: '600' },
+  headerIcon: { padding: 8 },
+  content: {
+    flex: 1,
+  },
+  inputSection: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+    zIndex: 2,
+  },
+  input: {
+    backgroundColor: '#F9F9FB',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: '#1A1A1A',
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: '#EAEAEC',
+  },
+  categoryContainer: {
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  categoryScroll: {
+    paddingRight: 20,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F2',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  categoryChipSelected: {
+    backgroundColor: '#E8E5FE',
+    borderColor: '#8B7CF6',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  categoryChipTextSelected: {
+    color: '#8B7CF6',
+    fontWeight: '600',
+  },
+  parkBtn: {
+    backgroundColor: '#8B7CF6',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  parkBtnDisabled: {
+    backgroundColor: '#C5C5C7',
+  },
+  parkBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  listSection: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  listTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  listContent: {
+    paddingBottom: 24,
+  },
+  thoughtCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8B7CF6',
+  },
+  thoughtHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryBadge: {
+    backgroundColor: 'rgba(139, 124, 246, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#8B7CF6',
+    fontWeight: '600',
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#999',
+  },
+  thoughtText: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 22,
+    opacity: 0.8, // Make it look slightly "folded away"
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: '#F5F5F7',
+  },
+  finishBtn: {
+    backgroundColor: '#FF9500',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  finishBtnDisabled: {
+    backgroundColor: '#EAEAEC',
+  },
+  finishBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
 // ─── ExerciseDetailScreen ───────────────────────────────────────────────────
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
@@ -1644,6 +2010,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [showBodyScanAnimation, setShowBodyScanAnimation] = useState(false);
   const [showGroundingAnimation, setShowGroundingAnimation] = useState(false);
   const [showTriangleAnimation, setShowTriangleAnimation] = useState(false);
+  const [showThoughtParkingScreen, setShowThoughtParkingScreen] = useState(false);
   const breathingScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -1687,6 +2054,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       setIsPlaying(true);
       return;
     }
+
+    if (exercise.id === 'parcheggio-pensieri' && currentStep === 1) {
+      setShowThoughtParkingScreen(true);
+      return;
+    }
     
     if (currentStep < exercise.steps.length) {
       flatListRef.current?.scrollToOffset({ offset: width * (currentStep + 1), animated: true });
@@ -1704,6 +2076,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     }
     setShowBreathingAnimation(false);
     setShowBodyScanAnimation(false);
+    setShowGroundingAnimation(false);
+    setShowTriangleAnimation(false);
+    setShowThoughtParkingScreen(false);
     
     if (currentStep > 0) {
       flatListRef.current?.scrollToOffset({ offset: width * (currentStep - 1), animated: true });
@@ -1850,7 +2225,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   };
 
 
-  const handleCompleteExercise = async () => {
+  const handleCompleteExercise = async (customText?: string) => {
     // Stop audio and animation if active
     if (audioRef.current) {
       try { await audioRef.current.stopAsync(); } catch (e) {}
@@ -1861,7 +2236,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
     // Save in background — success screen shows regardless
     try {
-      const userText = Object.values(stepResponses)
+      const userText = customText ?? Object.values(stepResponses)
         .filter((t) => t && t.trim().length > 0)
         .join('\n\n');
 
@@ -1888,6 +2263,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     setShowBodyScanAnimation(false);
     setShowGroundingAnimation(false);
     setShowTriangleAnimation(false);
+    setShowThoughtParkingScreen(false);
     setShowSuccessScreen(true);
   };
 
@@ -2153,6 +2529,22 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
             onClose={() => setShowTriangleAnimation(false)}
             onComplete={handleCompleteExercise}
             initialIsPlaying={isPlaying}
+          />
+        </View>
+      )}
+
+      {showThoughtParkingScreen && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, elevation: 10 }]}>
+          <ThoughtParkingScreen
+            onClose={handlePreviousStep}
+            onAbort={onClose}
+            onComplete={(thoughts) => {
+              const formattedText = thoughts
+                .map(t => `[${PARKING_CATEGORIES.find(c => c.id === t.category)?.label || t.category}] ${t.text}`)
+                .join('\n\n');
+              setShowThoughtParkingScreen(false);
+              handleCompleteExercise(formattedText);
+            }}
           />
         </View>
       )}

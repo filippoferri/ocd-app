@@ -1,11 +1,13 @@
 export interface ExerciseStep {
   id: string;
-  type: 'default' | 'withaudio' | 'withtextarea' | 'withbreath';
+  type: 'default' | 'withaudio' | 'withtextarea' | 'withbreath' | 'preparation';
   title: string;
   content?: string[]; // Per i passi di tipo lista/linee guida
   placeholder?: string; // Per i passi di tipo withtextarea
   audioFile?: string; // Path del file audio per step withaudio e withbreath
   duration?: number; // Durata in minuti per questo step
+  description?: string; // Per descrizione aggiuntiva
+  instruction?: string; // Per istruzioni specifiche
 }
 
 export interface Exercise {
@@ -20,6 +22,7 @@ export interface Exercise {
   steps: ExerciseStep[];
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+  isGuided?: boolean;
 }
 
 export interface ExerciseProgress {
