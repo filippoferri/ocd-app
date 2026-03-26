@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [testResult, setTestResult] = useState<string | null>(null);
   const [currentMood, setCurrentMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const currentUserRef = useRef<User | null>(null);
 
   const checkTestStatus = (activities: UserActivity[]) => {
     const testActivities = activities.filter(a => a.type === 'test');
@@ -97,20 +98,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }),
         AuthService.hasCompletedOnboarding(userId).catch(e => {
           console.error('❌ [AuthContext] Errore hasCompletedOnboarding:', e);
-          return false;
+          return null; // null = don't change current state
         })
       ]);
 
       // Timeout di 4 secondi per il caricamento dei dati specifici
-      const timeoutPromise = new Promise<[UserActivity[], boolean]>((resolve) => 
-        setTimeout(() => resolve([[], false]), 4000)
+      const timeoutPromise = new Promise<[UserActivity[], boolean | null]>((resolve) => 
+        setTimeout(() => resolve([[], null]), 4000)  // null = don't change onboarding state
       );
 
       const [activities, completed] = await Promise.race([dataPromise, timeoutPromise]);
 
       console.log('✅ [AuthContext] Dati caricati. Onboarding completato:', completed);
       setUserActivities(activities);
-      setOnboardingCompleted(completed);
+      // Only update onboarding state if we got a definitive answer (not null from error)
+      if (completed !== null) {
+        setOnboardingCompleted(completed);
+      }
       
       if (completed) {
         try {
@@ -124,8 +128,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error('❌ [AuthContext] Errore fatale in loadUserData:', error);
-      // Fallback sicuro per non bloccare l'interfaccia
-      setOnboardingCompleted(false);
+      // Don't reset onboarding to false if it was already true
+      // This prevents the onboarding from reappearing on transient errors
     } finally {
       loadingUserIds.current.delete(userId);
     }
@@ -133,12 +137,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleAuthSuccess = async (user: User) => {
     setCurrentUser(user);
+    currentUserRef.current = user;
     await loadUserData(user.id);
   };
 
   const handleLogout = async () => {
     await AuthService.logout();
     setCurrentUser(null);
+    currentUserRef.current = null;
     setUserActivities([]);
     setOnboardingCompleted(null);
     setTestCompleted(false);
@@ -233,9 +239,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           provider: session.user.app_metadata?.provider || session.user.identities?.[0]?.provider,
         };
         
-        // Evitiamo ricaricamenti inutili se l'utente è lo stesso
-        if (!currentUser || currentUser.id !== mappedUser.id) {
+        // Use ref to avoid stale closure — prevents re-triggering on token refresh
+        if (!currentUserRef.current || currentUserRef.current.id !== mappedUser.id) {
           setCurrentUser(mappedUser);
+          currentUserRef.current = mappedUser;
           await loadUserData(session.user.id); 
         }
         setIsLoading(false);
