@@ -2018,6 +2018,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
   const handleStartExercise = () => {
     setIsStarted(true);
+    if (exercise.id === 'parcheggio-pensieri') {
+      setShowThoughtParkingScreen(true);
+      return;
+    }
     // Use scrollToOffset for reliable cross-platform navigation
     flatListRef.current?.scrollToOffset({ offset: width, animated: true });
   };
@@ -2055,11 +2059,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       return;
     }
 
-    if (exercise.id === 'parcheggio-pensieri' && currentStep === 1) {
-      setShowThoughtParkingScreen(true);
-      return;
-    }
-    
+
     if (currentStep < exercise.steps.length) {
       flatListRef.current?.scrollToOffset({ offset: width * (currentStep + 1), animated: true });
     } else {
@@ -2240,9 +2240,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         .filter((t) => t && t.trim().length > 0)
         .join('\n\n');
 
-      const notes = userText 
-        ? `Esercizio completato con successo.\n\n${userText}`
-        : `Esercizio completato con successo.`;
+      const notes = exercise.id === 'parcheggio-pensieri'
+        ? userText
+        : (userText 
+          ? `Esercizio completato con successo.\n\n${userText}`
+          : `Esercizio completato con successo.`);
 
       await WorkoutService.completeExercise(exercise, notes);
       
@@ -2263,7 +2265,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     setShowBodyScanAnimation(false);
     setShowGroundingAnimation(false);
     setShowTriangleAnimation(false);
-    setShowThoughtParkingScreen(false);
+    // Non reimpostare a false lo schermo parcheggio subito, altrimenti l'utente vede 
+    // l'UI sottostante prima che la modale Success appaia completamente (flash).
     setShowSuccessScreen(true);
   };
 
@@ -2295,7 +2298,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         contentContainerStyle={styles.introScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.introDurationText}>{exercise.duration} minuti</Text>
+        <Text style={styles.introDurationText}>
+          {exercise.duration === 0 ? 'Libero' : `${exercise.duration} minuti`}
+        </Text>
         <Text style={styles.introTitleText}>{exercise.name}</Text>
         
         <Text style={styles.introDescriptionText}>{exercise.introText}</Text>
@@ -2542,7 +2547,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
               const formattedText = thoughts
                 .map(t => `[${PARKING_CATEGORIES.find(c => c.id === t.category)?.label || t.category}] ${t.text}`)
                 .join('\n\n');
-              setShowThoughtParkingScreen(false);
+              // Do NOT setShowThoughtParkingScreen(false) here to avoid flash
               handleCompleteExercise(formattedText);
             }}
           />

@@ -298,20 +298,7 @@ class ExerciseService {
       isGuided: false,
       image: './assets/exercises/thought-parking.png',
       steps: [
-        {
-          id: 'step1',
-          type: 'preparation',
-          title: 'Benvenuto al parcheggio',
-          description: '',
-          instruction: 'Usa questo spazio per depositare i pensieri che non vuoi tenere a mente ora',
-          content: [
-            'Riconosci un pensiero che ti disturba o distrae',
-            'Scrivilo brevemente nella casella di testo',
-            'Assegnagli un\'etichetta veloce',
-            'Schiaccia "Parcheggia" per svuotare la mente',
-            'Torna a questo elenco solo quando vorrai o potrai occupartene'
-          ]
-        }
+        // Nessun step intermedio, si va dritti all'esercizio
       ]
     }
   ];
