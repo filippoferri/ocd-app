@@ -2240,11 +2240,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         .filter((t) => t && t.trim().length > 0)
         .join('\n\n');
 
-      const notes = exercise.id === 'parcheggio-pensieri'
-        ? userText
-        : (userText 
-          ? `Esercizio completato con successo.\n\n${userText}`
-          : `Esercizio completato con successo.`);
+      const notes = userText 
+        ? `Esercizio completato con successo.\n\n${userText}`
+        : `Esercizio completato con successo.`;
 
       await WorkoutService.completeExercise(exercise, notes);
       
