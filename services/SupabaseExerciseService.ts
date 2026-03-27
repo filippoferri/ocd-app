@@ -149,7 +149,10 @@ class SupabaseExerciseService {
           exercise_id: progress.exerciseId,
           user_id: progress.userId,
           completed_at: progress.completedAt.toISOString(),
-          step_responses: progress.stepResponses || {}
+          step_responses: progress.stepResponses || {},
+          final_feeling_score: progress.finalFeelingScore,
+          started_at: progress.startedAt?.toISOString(),
+          duration_seconds: progress.durationSeconds
         });
 
       if (error) {
@@ -158,6 +161,40 @@ class SupabaseExerciseService {
       }
     } catch (error) {
       console.error('Error in saveExerciseProgress:', error);
+    }
+  }
+
+  /**
+   * Aggiorna il feedback dell'ultimo esercizio completato
+   */
+  static async updateExerciseFeedback(exerciseId: string, userId: string, score: number): Promise<void> {
+    if (!this.isConfigured()) return;
+    try {
+      // Troviamo l'ultimo record per questo utente ed esercizio
+      const { data: lastProgress, error: findError } = await this.supabase
+        .from('exercise_progress')
+        .select('id')
+        .eq('exercise_id', exerciseId)
+        .eq('user_id', userId)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (findError || !lastProgress) {
+        console.error('Could not find last progress to update feedback:', findError);
+        return;
+      }
+
+      const { error: updateError } = await this.supabase
+        .from('exercise_progress')
+        .update({ final_feeling_score: score })
+        .eq('id', lastProgress.id);
+
+      if (updateError) {
+        console.error('Error updating feeling score:', updateError);
+      }
+    } catch (error) {
+      console.error('Error in updateExerciseFeedback:', error);
     }
   }
 
@@ -184,7 +221,10 @@ class SupabaseExerciseService {
         exerciseId: item.exercise_id,
         userId: item.user_id,
         completedAt: new Date(item.completed_at),
-        stepResponses: item.step_responses || {}
+        stepResponses: item.step_responses || {},
+        finalFeelingScore: item.final_feeling_score,
+        startedAt: item.started_at ? new Date(item.started_at) : undefined,
+        durationSeconds: item.duration_seconds
       }));
     } catch (error) {
       console.error('Error in getUserExerciseProgress:', error);

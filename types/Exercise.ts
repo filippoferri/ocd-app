@@ -23,6 +23,16 @@ export interface Exercise {
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   isGuided?: boolean;
+
+  // Nuovi campi per il motore di raccomandazione
+  primaryCategory?: string;
+  tags?: string[];
+  recommendedTimeSlots?: string[];
+  recommendedIntensityLevels?: string[];
+  usageType?: string;
+  repetitionCooldownDays?: number;
+  mentalLoad?: 'low' | 'medium' | 'high';
+  journeyRole?: 'daily_ritual' | 'rescue_tool' | 'post_log_tool';
 }
 
 export interface ExerciseProgress {
@@ -30,4 +40,7 @@ export interface ExerciseProgress {
   userId: string;
   completedAt: Date;
   stepResponses?: { [stepId: string]: string }; // Risposte ai passi con textarea
+  finalFeelingScore?: number; // 0, 1, 2
+  startedAt?: Date;
+  durationSeconds?: number;
 }

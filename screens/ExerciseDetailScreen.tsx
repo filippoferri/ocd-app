@@ -2005,6 +2005,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [audioDuration, setAudioDuration] = useState(0);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<'sad' | 'neutral' | 'happy' | null>(null);
+  const startTimeRef = useRef<Date | null>(null);
   const audioRef = useRef<Audio.Sound | null>(null);
   const [showBreathingAnimation, setShowBreathingAnimation] = useState(false);
   const [showBodyScanAnimation, setShowBodyScanAnimation] = useState(false);
@@ -2018,6 +2019,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
   const handleStartExercise = () => {
     setIsStarted(true);
+    startTimeRef.current = new Date();
     if (exercise.id === 'parcheggio-pensieri') {
       setShowThoughtParkingScreen(true);
       return;
@@ -2244,13 +2246,17 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         ? `Esercizio completato con successo.\n\n${userText}`
         : `Esercizio completato con successo.`;
 
-      await WorkoutService.completeExercise(exercise, notes);
-      
+      const durationSeconds = startTimeRef.current 
+        ? Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000)
+        : 0;
+
       const progress: ExerciseProgress = {
         exerciseId: exercise.id,
         userId: currentUser?.id || 'guest',
         completedAt: new Date(),
         stepResponses,
+        startedAt: startTimeRef.current || undefined,
+        durationSeconds,
       };
       await ExerciseServiceAdapter.saveExerciseProgress(progress);
     } catch (error) {
@@ -2410,7 +2416,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
                 styles.moodButton,
                 selectedMood === mood && { backgroundColor: getMoodColor(mood) + '20' }
               ]}
-              onPress={() => setSelectedMood(mood)}
+              onPress={() => {
+                setSelectedMood(mood);
+                // Map mood to score: sad=0, neutral=1, happy=2
+                const score = mood === 'sad' ? 0 : mood === 'neutral' ? 1 : 2;
+                if (currentUser) {
+                  ExerciseServiceAdapter.updateExerciseFeedback(exercise.id, currentUser.id, score);
+                }
+              }}
             >
               {getMoodComponent(mood, selectedMood === mood)}
             </TouchableOpacity>

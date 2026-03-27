@@ -1,53 +1,96 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ExerciseService from './ExerciseService';
 import { Exercise } from '../types/Exercise';
+import { supabase } from '../lib/supabase';
+import RecommendationEngine from './RecommendationEngine';
+import ExerciseServiceAdapter from './ExerciseServiceAdapter';
 
 export interface DailySlotResult {
-  morning: Exercise;
-  day: Exercise;
-  evening: Exercise;
+  exercises: Exercise[];
+  mode: string;
+  patterns: string[];
 }
 
-// Exercise pools per slot
-const MORNING_POOL = ['gratitudine-mattino'];
-const DAY_POOL = ['scrittura', 'respirazione-consapevole', 'respirazione-triangolare'];
-const EVENING_POOL = ['gratitudine-sera'];
-
-const STORAGE_KEY_SELECTION = 'dailyExerciseSelection';
 const STORAGE_KEY_COMPLETED = 'dailyExerciseCompleted';
 
-// Deterministic hash from a date string to pick a consistent random index
-function pickIndexForDate(date: string, poolSize: number): number {
-  let hash = 0;
-  for (let i = 0; i < date.length; i++) {
-    hash = (hash * 31 + date.charCodeAt(i)) & 0xffffffff;
-  }
-  return Math.abs(hash) % poolSize;
-}
-
 class DailyExerciseService {
-  // Returns today's daily exercises (one per slot), consistent for the whole day
-  static async getDailyExercises(date: string): Promise<DailySlotResult | null> {
+  /**
+   * Recupera le raccomandazioni del giorno (3-4 esercizi)
+   * Usa il database come cache persistente per la giornata
+   */
+  static async getDailyExercises(userId: string): Promise<DailySlotResult | null> {
+    const today = new Date().toISOString().split('T')[0];
+
     try {
-      const cached = await this.getCachedSelection(date);
-      if (cached) return cached;
+      // 1. Controlla se esistono già raccomandazioni per oggi nel DB
+      const { data: existing, error: fetchError } = await supabase
+        .from('daily_recommendations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .maybeSingle();
 
-      const morningId = MORNING_POOL[pickIndexForDate(date + 'M', MORNING_POOL.length)];
-      const dayId = DAY_POOL[pickIndexForDate(date + 'D', DAY_POOL.length)];
-      const eveningId = EVENING_POOL[pickIndexForDate(date + 'E', EVENING_POOL.length)];
-
-      const morning = ExerciseService.getExerciseById(morningId);
-      const day = ExerciseService.getExerciseById(dayId);
-      const evening = ExerciseService.getExerciseById(eveningId);
-
-      if (!morning || !day || !evening) {
-        console.error('DailyExerciseService: uno o più esercizi non trovati');
-        return null;
+      if (fetchError) {
+        console.error('Error fetching daily recommendations:', fetchError);
       }
 
-      const result: DailySlotResult = { morning, day, evening };
-      await this.cacheSelection(date, { morningId, dayId, eveningId });
-      return result;
+      if (existing) {
+        // Usa l'Adapter per ottenere le versioni più aggiornate (locali se Supabase non è allineato)
+        const exercises = await Promise.all(
+          existing.exercise_ids.map((id: string) => ExerciseServiceAdapter.getExerciseById(id))
+        );
+        
+        // Verifica se la cache contiene esercizi che ora sono esclusi
+        const hasExcludedExercises = existing.exercise_ids.includes('contrasta-compulsione') || 
+                                     existing.exercise_ids.includes('contrasta-ossessione');
+        
+        if (!hasExcludedExercises) {
+          return {
+            exercises: exercises.filter((ex): ex is Exercise => ex !== null),
+            mode: existing.generation_mode,
+            patterns: existing.patterns_detected_json
+          };
+        } else {
+          console.log('Cache invalidata: contiene esercizi esclusi. Rigenerazione in corso...');
+          // Procedi a rigenerare e sovrascrivere
+        }
+      }
+
+      // 2. Se non esistono o la cache è invalida, generane di nuove usando il motore
+      const result = await RecommendationEngine.generateDailyRecommendations(userId);
+
+      // 3. Salva/Aggiorna le nuove raccomandazioni nel DB
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('daily_recommendations')
+          .update({
+            exercise_ids: result.exercises.map(ex => ex.id),
+            generation_mode: result.mode,
+            generated_scores_json: result.scores,
+            patterns_detected_json: result.patterns
+          })
+          .eq('id', existing.id);
+          
+        if (updateError) console.error('Error updating daily recommendations:', updateError);
+      } else {
+        const { error: insertError } = await supabase
+          .from('daily_recommendations')
+          .insert({
+            user_id: userId,
+            date: today,
+            exercise_ids: result.exercises.map(ex => ex.id),
+            generation_mode: result.mode,
+            generated_scores_json: result.scores,
+            patterns_detected_json: result.patterns
+          });
+
+        if (insertError) console.error('Error saving daily recommendations:', insertError);
+      }
+
+      return {
+        exercises: result.exercises,
+        mode: result.mode,
+        patterns: result.patterns
+      };
     } catch (error) {
       console.error('DailyExerciseService.getDailyExercises error:', error);
       return null;
@@ -86,42 +129,6 @@ class DailyExerciseService {
   static async isExerciseCompletedToday(exerciseId: string, date: string): Promise<boolean> {
     const completed = await this.getCompletedExercisesToday(date);
     return completed.includes(exerciseId);
-  }
-
-  // === Private helpers ===
-
-  private static async getCachedSelection(date: string): Promise<DailySlotResult | null> {
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY_SELECTION);
-      const data: Record<string, { morningId: string; dayId: string; eveningId: string }> =
-        raw ? JSON.parse(raw) : {};
-
-      const cached = data[date];
-      if (!cached) return null;
-
-      const morning = ExerciseService.getExerciseById(cached.morningId);
-      const day = ExerciseService.getExerciseById(cached.dayId);
-      const evening = ExerciseService.getExerciseById(cached.eveningId);
-
-      if (!morning || !day || !evening) return null;
-      return { morning, day, evening };
-    } catch {
-      return null;
-    }
-  }
-
-  private static async cacheSelection(
-    date: string,
-    ids: { morningId: string; dayId: string; eveningId: string }
-  ): Promise<void> {
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY_SELECTION);
-      const data: Record<string, typeof ids> = raw ? JSON.parse(raw) : {};
-      data[date] = ids;
-      await AsyncStorage.setItem(STORAGE_KEY_SELECTION, JSON.stringify(data));
-    } catch (error) {
-      console.error('DailyExerciseService.cacheSelection error:', error);
-    }
   }
 }
 

@@ -3,12 +3,12 @@
 
 import { Exercise, ExerciseProgress } from '../types/Exercise';
 import ExerciseService from './ExerciseService';
-// import { SupabaseExerciseService } from './SupabaseExerciseService'; // Temporaneamente disabilitato per evitare errori Hermes
+import { SupabaseExerciseService } from './SupabaseExerciseService';
 
 type DataSource = 'local' | 'supabase' | 'hybrid';
 
 class ExerciseServiceAdapter {
-  private static dataSource: DataSource = 'local'; // Modalità predefinita - solo dati locali
+  private static dataSource: DataSource = 'supabase'; // Cambiato in supabase per abilitare il motore di raccomandazione
   private static fallbackToLocal = true; // Fallback automatico in caso di errore
 
   // Configura la fonte dati
@@ -85,11 +85,20 @@ class ExerciseServiceAdapter {
   // Salva progresso esercizio
   static async saveExerciseProgress(progress: ExerciseProgress): Promise<void> {
     try {
-      // Per ora salva solo localmente
-      console.log('Progresso salvato localmente:', progress);
+      await SupabaseExerciseService.saveExerciseProgress(progress);
+      console.log('Progresso salvato su Supabase:', progress.exerciseId);
     } catch (error) {
-      console.error('Errore nel salvataggio progresso:', error);
-      throw error;
+      console.error('Errore nel salvataggio progresso su Supabase:', error);
+    }
+  }
+
+  // Aggiorna il feedback dell'ultimo esercizio completato
+  static async updateExerciseFeedback(exerciseId: string, userId: string, score: number): Promise<void> {
+    try {
+      await SupabaseExerciseService.updateExerciseFeedback(exerciseId, userId, score);
+      console.log('Feedback aggiornato su Supabase:', score);
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento feedback:', error);
     }
   }
 
