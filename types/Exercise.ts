@@ -24,15 +24,20 @@ export interface Exercise {
   difficulty?: 'easy' | 'medium' | 'hard';
   isGuided?: boolean;
 
-  // Nuovi campi per il motore di raccomandazione
+  // Nuovi campi per il motore di raccomandazione e ordinamento
   primaryCategory?: string;
   tags?: string[];
-  recommendedTimeSlots?: string[];
-  recommendedIntensityLevels?: string[];
-  usageType?: string;
+  recommendedTimeSlots?: ('morning' | 'afternoon' | 'evening' | 'night' | 'anytime')[];
+  recommendedIntensityLevels?: ('bassa' | 'media' | 'alta')[];
+  usageType?: 'preventive' | 'regulation' | 'decompression' | 'emergency' | 'reflection';
   repetitionCooldownDays?: number;
   mentalLoad?: 'low' | 'medium' | 'high';
   journeyRole?: 'daily_ritual' | 'rescue_tool' | 'post_log_tool';
+  
+  // Campi specifici per l'ordinamento automatico
+  journeyPhase?: 'start_day' | 'support_anytime' | 'end_day';
+  defaultDisplayOrder?: number;
+  priorityInCriticalMode?: 'low' | 'medium' | 'high';
 }
 
 export interface ExerciseProgress {

@@ -16,11 +16,11 @@ export interface TrendState {
 
 export class TrendService {
   private static readonly MESSAGES = {
-    bootstrap: "Stiamo iniziando questo percorso insieme.",
+    bootstrap: "Stiamo iniziando questo percorso insieme. Inizia da qui.",
     inattivo: "Bentornato. Riprendi da oggi o registra come ti senti.",
-    miglioramento: "Stai andando nella direzione giusta.",
-    stabile: "Stai mantenendo l’equilibrio.",
-    piu_difficile: "È un momento più difficile, capita."
+    miglioramento: "Stai andando nella direzione giusta. Prosegui con gli esercizi.",
+    stabile: "Stai mantenendo l’equilibrio. Continua così.",
+    piu_difficile: "È un momento più difficile, capita. Prenditi il tuo tempo."
   };
 
   private static readonly UI_MAPPING: Record<TrendStateType, Omit<TrendState, 'message' | 'state'>> = {

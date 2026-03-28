@@ -2,6 +2,7 @@ import { Exercise, ExerciseProgress } from '../types/Exercise';
 import { supabase } from '../lib/supabase';
 import { SupabaseExerciseService } from './SupabaseExerciseService';
 import ExerciseServiceAdapter from './ExerciseServiceAdapter';
+import { ExerciseSorter } from './ExerciseSorter';
 
 export interface DailyRecommendation {
   exercises: Exercise[];
@@ -26,7 +27,9 @@ class RecommendationEngine {
     variety: 2,
     pattern: 3,
     preventive: 2,
-    repetitionPenalty: -5
+    repetitionPenalty: -5,
+    criticalIntensityThreshold: 2.5, // 0-3 scale: media tra media(2) e alta(3)
+    criticalFrequencyFactor: 1.5
   };
 
   /**
@@ -66,8 +69,15 @@ class RecommendationEngine {
     // 4. Selezione finale
     const selectedExercises = this.selectExercises(exercises, scores, mode);
 
+    // 5. Ordinamento finale basato sulle regole di business
+    const isCritical = this.checkCriticalMode(recentActivations, patterns);
+    const orderedExercises = ExerciseSorter.orderDailyExercises(selectedExercises, {
+      isCriticalMode: isCritical,
+      todayTimeContext: currentTimeSlot as any
+    });
+
     return {
-      exercises: selectedExercises,
+      exercises: orderedExercises,
       mode,
       patterns,
       scores
@@ -171,7 +181,7 @@ class RecommendationEngine {
     let score = 0;
 
     // 1. Score momento giornata
-    if (exercise.recommendedTimeSlots?.includes(currentTimeSlot)) {
+    if (exercise.recommendedTimeSlots?.includes(currentTimeSlot as any)) {
       score += 3;
     } else if (exercise.recommendedTimeSlots?.includes('anytime')) {
       score += 1;
@@ -179,7 +189,7 @@ class RecommendationEngine {
 
     // 2. Score intensità recente
     const recentIntensity = activations.length > 0 ? activations[0].intensity_level : 'bassa';
-    if (exercise.recommendedIntensityLevels?.includes(recentIntensity)) {
+    if (exercise.recommendedIntensityLevels?.includes(recentIntensity as any)) {
       score += 2;
     }
 
@@ -204,7 +214,7 @@ class RecommendationEngine {
     for (const pattern of patterns) {
       if (pattern.startsWith('picco_')) {
         const slot = pattern.replace('picco_', '');
-        if (exercise.recommendedTimeSlots?.includes(slot) && exercise.usageType === 'preventive') {
+        if (exercise.recommendedTimeSlots?.includes(slot as any) && exercise.usageType === 'preventive') {
           score += 3;
         }
       }
@@ -273,6 +283,59 @@ class RecommendationEngine {
     }
 
     return selected;
+  }
+
+  /**
+   * Determina se l'utente è in modalità critica basata sui requisiti
+   */
+  private static checkCriticalMode(activations: Activation[], patterns: string[]): boolean {
+    if (activations.length === 0) return false;
+
+    // 1. 2 attivazioni alte consecutive negli ultimi 3 giorni
+    const last3Days = activations.filter(a => {
+      const date = new Date(a.created_at);
+      const now = new Date();
+      return (now.getTime() - date.getTime()) < (3 * 24 * 60 * 60 * 1000);
+    });
+
+    if (last3Days.length >= 2) {
+      if (last3Days[0].intensity_level === 'alta' && last3Days[1].intensity_level === 'alta') {
+        return true;
+      }
+    }
+
+    // 2. Intensità media ultimi 3 giorni > soglia
+    if (last3Days.length > 0) {
+      const mapIntensityToNum = (intensity: string) => {
+        if (intensity === 'alta') return 3;
+        if (intensity === 'media') return 2;
+        return 1;
+      };
+      const avgIntensity = last3Days.reduce((acc, curr) => acc + mapIntensityToNum(curr.intensity_level), 0) / last3Days.length;
+      if (avgIntensity >= this.WEIGHTS.criticalIntensityThreshold) {
+        return true;
+      }
+    }
+
+    // 3. Aumento netto delle attivazioni rispetto ai 7 giorni precedenti
+    const last7Days = activations.filter(a => {
+      const date = new Date(a.created_at);
+      const now = new Date();
+      return (now.getTime() - date.getTime()) < (7 * 24 * 60 * 60 * 1000);
+    });
+    
+    const previous7Days = activations.filter(a => {
+      const date = new Date(a.created_at);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      return diff >= (7 * 24 * 60 * 60 * 1000) && diff < (14 * 24 * 60 * 60 * 1000);
+    });
+
+    if (last7Days.length > previous7Days.length * this.WEIGHTS.criticalFrequencyFactor && last7Days.length >= 3) {
+      return true;
+    }
+
+    return patterns.includes('escalation');
   }
 
   private static getCurrentTimeSlot(): string {

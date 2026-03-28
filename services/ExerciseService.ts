@@ -26,7 +26,15 @@ class ExerciseService {
         }
       ],
       category: 'mindfulness',
-      difficulty: 'easy'
+      difficulty: 'easy',
+      // Metadata per ordinamento
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 2,
+      usageType: 'regulation',
+      recommendedTimeSlots: ['evening', 'anytime'],
+      priorityInCriticalMode: 'high',
+      mentalLoad: 'low',
+      primaryCategory: 'corporeo'
     },
     {
       id: 'contrasta-compulsione',
@@ -64,7 +72,12 @@ class ExerciseService {
         }
       ],
       category: 'exposure',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 10, // Più basso di default
+      usageType: 'regulation',
+      mentalLoad: 'medium',
+      priorityInCriticalMode: 'medium'
     },
     {
       id: 'contrasta-ossessione',
@@ -102,7 +115,12 @@ class ExerciseService {
         }
       ],
       category: 'mindfulness',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 11,
+      usageType: 'regulation',
+      mentalLoad: 'medium',
+      priorityInCriticalMode: 'medium'
     },
     {
       id: 'gratitudine-mattino',
@@ -138,7 +156,14 @@ class ExerciseService {
         }
       ],
       category: 'positivity',
-      difficulty: 'easy'
+      difficulty: 'easy',
+      // Metadata per ordinamento
+      journeyPhase: 'start_day',
+      defaultDisplayOrder: 1,
+      usageType: 'preventive',
+      recommendedTimeSlots: ['morning'],
+      priorityInCriticalMode: 'low',
+      mentalLoad: 'low'
     },
     {
       id: 'gratitudine-sera',
@@ -174,7 +199,14 @@ class ExerciseService {
         }
       ],
       category: 'positivity',
-      difficulty: 'easy'
+      difficulty: 'easy',
+      // Metadata per ordinamento
+      journeyPhase: 'end_day',
+      defaultDisplayOrder: 3,
+      usageType: 'decompression',
+      recommendedTimeSlots: ['evening'],
+      priorityInCriticalMode: 'low',
+      mentalLoad: 'low'
     },
     {
       id: 'scrittura',
@@ -210,7 +242,12 @@ class ExerciseService {
         }
       ],
       category: 'reflection',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 20,
+      usageType: 'reflection',
+      mentalLoad: 'high',
+      priorityInCriticalMode: 'low'
     },
     {
       id: 'respirazione-consapevole',
@@ -234,7 +271,12 @@ class ExerciseService {
         }
       ],
       category: 'mindfulness',
-      difficulty: 'easy'
+      difficulty: 'easy',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 4,
+      usageType: 'regulation',
+      mentalLoad: 'low',
+      priorityInCriticalMode: 'medium'
     },
     {
       id: 'respirazione-triangolare',
@@ -246,6 +288,12 @@ class ExerciseService {
       category: 'mindfulness',
       isGuided: true,
       image: './assets/exercises/triangle-breathing.png',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 5,
+      usageType: 'regulation',
+      mentalLoad: 'low',
+      priorityInCriticalMode: 'high',
+      primaryCategory: 'respirazione',
       steps: [
         {
           id: 'step1',
@@ -273,6 +321,11 @@ class ExerciseService {
       category: 'mindfulness',
       isGuided: true,
       image: './assets/exercises/grounding.png',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 6,
+      usageType: 'emergency',
+      mentalLoad: 'low',
+      priorityInCriticalMode: 'high',
       steps: [
         {
           id: 'preparation',
@@ -297,6 +350,11 @@ class ExerciseService {
       category: 'thoughts',
       isGuided: false,
       image: './assets/exercises/thought-parking.png',
+      journeyPhase: 'support_anytime',
+      defaultDisplayOrder: 7,
+      usageType: 'regulation',
+      mentalLoad: 'low',
+      priorityInCriticalMode: 'high',
       steps: [
         // Nessun step intermedio, si va dritti all'esercizio
       ]

@@ -196,8 +196,10 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
       {/* Explanatory Phrase */}
       {trendState && (
         <View style={[styles.trendMessageContainer, { backgroundColor: trendState.bgColor }]}>
-          <Ionicons name="bulb-outline" size={24} color={trendState.textColor} style={styles.trendMessageIcon} />
-          <Text style={[styles.trendMessageText, { color: trendState.textColor }]}>{trendState.message}</Text>
+          <Ionicons name="sparkles-outline" size={24} color={trendState.textColor} style={styles.trendMessageIcon} />
+          <Text style={[styles.trendMessageText, { color: trendState.textColor, fontStyle: 'italic' }]}>
+            "{trendState.message}"
+          </Text>
         </View>
       )}
 
@@ -206,12 +208,16 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
         <Text style={styles.sectionTitle}>Esercizi del giorno</Text>
         
         {displayedExercises.map((exercise, index) => {
-          // Micro-label logic
+          // Micro-label logic basata sulla fase della giornata e utilità
           let microLabel = '';
-          if (index === 0) microLabel = 'Per iniziare';
-          else if (dailySlots?.mode === 'stabilization') microLabel = 'Calmante';
-          else if (exercise.usageType === 'preventive') microLabel = 'Preventivo';
-          else if (exercise.journeyRole === 'rescue_tool') microLabel = 'Suggerito';
+          if (exercise.journeyPhase === 'start_day') microLabel = 'PER INIZIARE';
+          else if (exercise.journeyPhase === 'end_day') microLabel = 'PER CHIUDERE LA GIORNATA';
+          else if (exercise.usageType === 'emergency') microLabel = 'PER EMERGENZA';
+          else if (exercise.duration < 5) microLabel = 'IN POCHI MINUTI';
+          else if (exercise.duration >= 5) microLabel = 'PER RILASSARTI';
+          else microLabel = 'PER TE';
+
+          const isRecommended = index === 0;
 
           return (
             <TouchableOpacity
@@ -227,7 +233,10 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
                 />
               </View>
               <View style={styles.exerciseContent}>
-                {microLabel ? <Text style={styles.microLabel}>{microLabel}</Text> : null}
+                <View style={styles.labelRow}>
+                  {microLabel ? <Text style={styles.microLabel}>{microLabel}</Text> : null}
+                  {isRecommended && <View style={styles.recommendedBadge}><Text style={styles.recommendedBadgeText}>CONSIGLIATO</Text></View>}
+                </View>
                 <Text style={styles.exerciseTitle}>{exercise.name}</Text>
                 <Text style={styles.exerciseDescription}>{exercise.objectiveText}</Text>
                 <View style={styles.exerciseTime}>
@@ -519,11 +528,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   microLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: '#9381FF',
     textTransform: 'uppercase',
     marginBottom: 4,
+    letterSpacing: 0.8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  recommendedBadge: {
+    backgroundColor: '#9381FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    marginBottom: 4,
+  },
+  recommendedBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: 'white',
     letterSpacing: 0.5,
   },
 });
