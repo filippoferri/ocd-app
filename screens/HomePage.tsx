@@ -58,6 +58,7 @@ const FaceHappy = () => (
 );
 
 import { Ionicons } from '@expo/vector-icons';
+import { calculateUserTrend, getHomeStatusPhrase, UserTrendState } from '../services/TrendService';
 
 interface HomePageProps {
   userName?: string;
@@ -135,6 +136,12 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
 
   const allExercisesDone = dailySlots !== null && displayedExercises.length === 0;
 
+  const userTrend: UserTrendState = React.useMemo(() => 
+    calculateUserTrend(userActivities, currentMood, completedIds.length), 
+    [userActivities, currentMood, completedIds.length]
+  );
+  const statusPhrase = getHomeStatusPhrase(userTrend);
+
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -159,6 +166,28 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
             </View>
           </View>
         </TouchableOpacity>
+      </View>
+
+      {/* Status Box */}
+      <View style={styles.trendSection}>
+        <View style={styles.trendCard}>
+          <View style={styles.trendIconContainer}>
+            <Ionicons 
+              name={
+                userTrend === 'POSITIVE' ? 'sparkles-outline' : 
+                userTrend === 'IMPROVING' ? 'trending-up-outline' : 
+                userTrend === 'HARDER' ? 'leaf-outline' : 
+                userTrend === 'BOOTSTRAP' ? 'map-outline' : 
+                'sunny-outline'
+              } 
+              size={22} 
+              color="#9381FF" 
+            />
+          </View>
+          <View style={styles.trendTextContainer}>
+            <Text style={styles.statusText}>"{statusPhrase}"</Text>
+          </View>
+        </View>
       </View>
 
       {/* Daily Exercises */}
@@ -309,6 +338,36 @@ const styles = StyleSheet.create({
   },
   exercisesSection: {
     marginBottom: 30,
+  },
+  trendSection: {
+    marginBottom: 25,
+  },
+  trendCard: {
+    backgroundColor: '#e5e3fd',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    // No shadow for initial style
+  },
+  trendIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(147, 129, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  trendTextContainer: {
+    flex: 1,
+  },
+  statusText: {
+    fontSize: 15,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    color: '#4B3E9F',
+    lineHeight: 20,
   },
   sectionTitle: {
     fontSize: 18,

@@ -10,8 +10,7 @@ import AccountScreen from './AccountScreen';
 import TermsScreen from './TermsScreen';
 import PolicyScreen from './PolicyScreen';
 import { Colors, Spacing, Shadow } from '../config/Theme';
-import AvatarPicker, { PREDEFINED_AVATARS } from '../components/AvatarPicker';
-import AuthService, { User } from '../services/AuthService';
+import { User } from '../services/AuthService';
 import SlideModal from '../components/SlideModal';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,11 +26,51 @@ interface ProfileScreenProps {
   onDeleteAccount?: () => Promise<void>;
 }
 
+import { calculateUserTrend, getTrendCopy, UserTrendState } from '../services/TrendService';
+
 const { width, height } = Dimensions.get('window');
+
+const TREND_DAYS = 7;
+const WEEKLY_GOAL = 3;
+
+// Helper: data locale nel formato YYYY-MM-DD (rispetta il fuso orario del dispositivo)
+const getLocalDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Genera le date per la settimana corrente (lunedì → domenica)
+const getWeekDates = () => {
+  const today = new Date();
+  const currentDay = today.getDay(); // 0 = domenica, 1 = lunedì, etc.
+  const startOfWeek = new Date(today);
+  // Sposta a lunedì: se hoje è domenica (0) → -6, altrimenti -(currentDay - 1)
+  startOfWeek.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+  
+  const weekDates = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    weekDates.push(getLocalDateString(date));
+  }
+  return weekDates;
+};
 
 export default function ProfileScreen({ onClose, user, onLogout, userActivities, testCompleted, testResult, onRetakeTest, onResetOnboarding, onDeleteAccount }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
-  const { handleUpdateAvatar } = useAuth();
+  
+  const weekDates = React.useMemo(() => getWeekDates(), []);
+  
+  // Verifica se in una data (YYYY-MM-DD locale) è stato completato un esercizio
+  const hasExerciseOnDate = (date: string) => {
+    return userActivities.some(activity => {
+      // Normalizza: prende solo la parte YYYY-MM-DD, sia ISO che locale
+      const activityDate = activity.date?.split('T')[0];
+      return activityDate === date && (activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'));
+    });
+  };
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -46,7 +85,6 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
   const [showAccount, setShowAccount] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // New Modal Animation State
   const modalOpacity = useRef(new Animated.Value(0)).current;
@@ -180,78 +218,41 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
     }
   };
 
-  const handleAvatarSelect = async (avatarId: string) => {
-    try {
-      await handleUpdateAvatar(avatarId);
-      setShowAvatarPicker(false);
-      Alert.alert("Successo", "Immagine profilo aggiornata!");
-    } catch (e) {
-      Alert.alert("Errore", "Impossibile aggiornare l'avatar.");
+  const userState: UserTrendState = calculateUserTrend(userActivities);
+  const trendCopy = getTrendCopy(userState);
+
+  const activeDaysThisWeek = weekDates.filter(date => hasExerciseOnDate(date)).length;
+
+  const heroContent = React.useMemo(() => {
+    if (activeDaysThisWeek > 0) {
+      return {
+        title: `${activeDaysThisWeek} ${activeDaysThisWeek === 1 ? 'giorno attivo' : 'giorni attivi'} questa settimana`,
+        subtitle: 'Continua così'
+      };
     }
+    return {
+      title: 'Nessuna attività questa settimana',
+      subtitle: 'Inizia oggi, anche con poco'
+    };
+  }, [activeDaysThisWeek]);
+
+  const getRecentInsightContent = () => {
+    return trendCopy.insight;
   };
 
-  const renderAvatar = () => {
-    if (!user) return <Ionicons name="person" size={40} color={Colors.secondary} />;
+  const supportPhrases = [
+    'La continuità conta più della quantità',
+    'Anche un piccolo passo oggi fa la differenza',
+    'Non serve fare tutto, basta iniziare',
+    'Ogni giorno attivo è un passo avanti'
+  ];
 
-    // First check if user has a manual illustration selected (stored as avatar_url starting with 'cloud', 'sun', etc.)
-    const predefinedAvatar = PREDEFINED_AVATARS.find(a => a.id === user.avatar_url);
-    if (predefinedAvatar) {
-      return <Image source={predefinedAvatar.source} style={styles.avatarImage} />;
-    }
+  const supportPhrase = React.useMemo(() => {
+    const dayIndex = new Date().getDay();
+    return supportPhrases[dayIndex % supportPhrases.length];
+  }, []);
 
-    // Default to Google/Social photo or placeholder
-    if (user.avatar_url) {
-      return <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />;
-    }
-
-    return <Ionicons name="person" size={40} color={Colors.secondary} />;
-  };
-
-  // Calcola il numero totale di attivazioni (ossessioni + compulsioni, escludendo esercizi)
-  const totalActivations = userActivities.filter(activity => 
-    !(activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'))
-  ).length;
-  
-  // Calcola il numero totale di esercizi completati
-  const totalExercises = userActivities.filter(activity => 
-    activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato')
-  ).length;
-
-  // Verifica se in una data (YYYY-MM-DD locale) è stato completato un esercizio
-  const hasExerciseOnDate = (date: string) => {
-    return userActivities.some(activity => {
-      // Normalizza: prende solo la parte YYYY-MM-DD, sia ISO che locale
-      const activityDate = activity.date?.split('T')[0];
-      return activityDate === date && (activity.id?.startsWith('exercise_') || activity.description.includes('Esercizio completato'));
-    });
-  };
-
-  // Helper: data locale nel formato YYYY-MM-DD (rispetta il fuso orario del dispositivo)
-  const getLocalDateString = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
-
-  // Genera le date per la settimana corrente (lunedì → domenica)
-  const getWeekDates = () => {
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 = domenica, 1 = lunedì, etc.
-    const startOfWeek = new Date(today);
-    // Sposta a lunedì: se hoje è domenica (0) → -6, altrimenti -(currentDay - 1)
-    startOfWeek.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-    
-    const weekDates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      weekDates.push(getLocalDateString(date));
-    }
-    return weekDates;
-  };
-
-  const weekDates = getWeekDates();
+  const weekDatesLocal = weekDates; // Alias for internal usage if needed
 
   const renderSettings = () => {
     return (
@@ -549,57 +550,34 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileSection}>
-          <TouchableOpacity 
-            style={styles.avatarContainer}
-            onPress={() => setShowAvatarPicker(true)}
-          >
-            <View style={styles.avatar}>
-              {renderAvatar()}
-            </View>
-            <View style={styles.editButton}>
-              <Ionicons name="camera" size={14} color="white" />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.userName}>{user?.name || 'Utente'}</Text>
-          <Text style={styles.userEmail}>{user?.email || ''}</Text>
-        </View>
-
-        <View style={styles.statsSection}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#EBF8FF' }]}>
-              <Ionicons name="flash" size={20} color="#3182CE" />
-            </View>
-            <View>
-              <Text style={styles.statNumberText}>{totalActivations}</Text>
-              <Text style={styles.statLabelText}>Attivazioni</Text>
-            </View>
-          </View>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: '#F0FFF4' }]}>
-              <Ionicons name="heart" size={20} color={Colors.success} />
-            </View>
-            <View>
-              <Text style={styles.statNumberText}>{totalExercises}</Text>
-              <Text style={styles.statLabelText}>Esercizi</Text>
-            </View>
-          </View>
+        <View style={styles.heroSection}>
+          <Text style={styles.heroTitle}>{heroContent.title}</Text>
+          <Text style={styles.heroSubtitle}>{heroContent.subtitle}</Text>
         </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Esercizi</Text>
+          <Text style={styles.sectionTitle}>Questa settimana</Text>
           <View style={styles.exerciseCalendar}>
             {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day, index) => {
               const date = weekDates[index];
-              const dayNumber = parseInt(date.split('-')[2], 10);
               const hasExercise = hasExerciseOnDate(date);
+              const isToday = date === getLocalDateString(new Date());
               
               return (
                 <View key={day} style={styles.calendarDay}>
-                  <View style={[styles.calendarDot, hasExercise && styles.calendarDotActive]} />
-                  <Text style={styles.calendarDayText}>{day}</Text>
-                  <Text style={styles.calendarDayNumber}>{dayNumber}</Text>
+                  <View style={[
+                    styles.calendarDot, 
+                    hasExercise && styles.calendarDotActive,
+                    isToday && styles.calendarDotToday
+                  ]}>
+                    {hasExercise ? (
+                      <Ionicons name="checkmark" size={12} color="white" />
+                    ) : (
+                      <View style={styles.calendarEmptyCircle} />
+                    )}
+                  </View>
+                  <Text style={[styles.calendarDayText, isToday && styles.calendarDayTextToday]}>{day}</Text>
                 </View>
               );
             })}
@@ -607,18 +585,24 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Obiettivi settimanali</Text>
+          <Text style={styles.sectionTitle}>Obiettivo settimanale</Text>
           <View style={styles.goalSection}>
-            <Text style={styles.goalText}>{Math.min(weekDates.filter(date => hasExerciseOnDate(date)).length, 3)} di 3</Text>
+            <Text style={styles.goalText}>{Math.min(activeDaysThisWeek, WEEKLY_GOAL)} su {WEEKLY_GOAL} completati</Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${Math.min(weekDates.filter(date => hasExerciseOnDate(date)).length / 3 * 100, 100)}%` }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(activeDaysThisWeek / WEEKLY_GOAL * 100, 100)}%` }]} />
             </View>
           </View>
           <Text style={styles.goalDescription}>
-            {weekDates.filter(date => hasExerciseOnDate(date)).length >= 3 
-              ? "🎉 Fantastico! Hai raggiunto il tuo obiettivo settimanale. La costanza è la chiave del successo e della crescita personale!"
-              : "Se esegui gli esercizi tre volte a settimana, i nostri dati dimostrano che ci sono miglioramenti tangibili."}
+            {supportPhrase}
           </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Andamento recente</Text>
+          <View style={styles.recentInsightCard}>
+            <Ionicons name="analytics" size={24} color={Colors.accent} />
+            <Text style={styles.recentInsightText}>{getRecentInsightContent()}</Text>
+          </View>
         </View>
 
         {testCompleted && testResult !== null && (
@@ -645,38 +629,6 @@ export default function ProfileScreen({ onClose, user, onLogout, userActivities,
 
         {renderSettings()}
       </Animated.View>
-
-      {/* Avatar Picker Bottom Sheet (Native Modal style) */}
-      <Modal 
-        visible={showAvatarPicker} 
-        transparent 
-        animationType="fade"
-        onRequestClose={() => setShowAvatarPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={() => setShowAvatarPicker(false)} 
-          />
-          <SlideModal
-            visible={showAvatarPicker}
-            onClose={() => setShowAvatarPicker(false)}
-            direction="vertical"
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.bottomSheetContainer}>
-                <AvatarPicker 
-                  onSelect={handleAvatarSelect}
-                  onClose={() => setShowAvatarPicker(false)}
-                  currentAvatarId={user?.avatar_url}
-                />
-              </View>
-              <View style={styles.modalBottomSpacer} />
-            </View>
-          </SlideModal>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -706,90 +658,47 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
     borderRadius: 12,
   },
-  profileSection: {
+  heroSection: {
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.xxl,
     alignItems: 'center',
-    paddingVertical: Spacing.xl,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: Spacing.md,
-  },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  editButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FF8C00',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  userName: {
-    fontSize: 26,
-    fontWeight: '700',
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '600',
     color: Colors.onPrimary,
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+    lineHeight: 26,
   },
-  userEmail: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '500',
+  heroSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  statsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.lg,
-    gap: Spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  recentInsightCard: {
+    backgroundColor: '#F8F9FA',
     borderRadius: 16,
     padding: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: Colors.border,
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  statNumberText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.onPrimary,
-  },
-  statLabelText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+  recentInsightText: {
+    fontSize: 15,
+    color: '#0D0140',
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 22,
+  },
+  calendarEmptyCircle: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.border,
   },
   content: {
     flex: 1,
@@ -823,27 +732,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   calendarDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.border,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
   calendarDotActive: {
-    backgroundColor: Colors.accent,
-    transform: [{ scale: 1.2 }],
+    backgroundColor: Colors.success,
+    transform: [{ scale: 1.15 }],
+  },
+  calendarDotToday: {
+    borderWidth: 2,
+    borderColor: Colors.accent,
   },
   calendarDayText: {
     fontSize: 11,
-    color: Colors.secondary,
+    color: 'rgba(13, 1, 64, 0.5)',
     fontWeight: '600',
     marginBottom: 4,
     textTransform: 'uppercase',
+  },
+  calendarDayTextToday: {
+    color: Colors.accent,
+    fontWeight: '800',
   },
   calendarDayNumber: {
     fontSize: 15,
     fontWeight: '700',
     color: '#0D0140',
+    display: 'none',
   },
   goalSection: {
     marginBottom: Spacing.md,
