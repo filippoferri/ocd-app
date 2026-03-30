@@ -11,18 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ButtonNav from '../components/ButtonNav';
+import { ActivationEntry } from '../types/Activity';
 
 interface ActivityDetailScreenProps {
-  activity: {
-    id: string;
-    type: 'ossessione' | 'compulsione' | 'test';
-    symptom: string;
-    intensity: string;
-    description: string;
-    time: string;
-    duration?: string; // Per gli esercizi
-    date: string;
-  };
+  activity: ActivationEntry & { duration?: string };
   onBack: () => void;
   onSave: (description: string) => void;
   onDelete: () => void;

@@ -58,7 +58,6 @@ const FaceHappy = () => (
 );
 
 import { Ionicons } from '@expo/vector-icons';
-import { calculateUserTrend, getHomeStatusPhrase, UserTrendState } from '../services/TrendService';
 
 interface HomePageProps {
   userName?: string;

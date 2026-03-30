@@ -18,15 +18,7 @@ import AuthService from '../services/AuthService';
 
 import ExerciseServiceAdapter from '../services/ExerciseServiceAdapter';
 
-interface ActivationEntry {
-  id: string;
-  date: string;
-  time: string;
-  type: 'ossessione' | 'compulsione' | 'test';
-  symptom: string;
-  intensity: string;
-  description: string;
-}
+import { UserActivity, ActivationEntry } from '../types/Activity';
 
 interface DiaryScreenProps {
   onClose: () => void;
