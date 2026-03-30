@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
-import { Svg, Path, G, Circle } from 'react-native-svg';
+import { Svg, G, Circle, Path } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
 import { UserActivity } from '../types/Activity';
 import DailyExerciseService, { DailySlotResult } from '../services/DailyExerciseService';
 import AuthService from '../services/AuthService';
-import TrendService, { TrendState } from '../services/TrendService';
-import { PREDEFINED_AVATARS } from '../components/AvatarPicker';
+import TrendService, { calculateUserTrend, getHomeStatusPhrase, UserTrendState } from '../services/TrendService';
 
 const CircleSvg = ({ baseColor = "#9381FF", lightColor = "#B8B8FF" }) => (
   <Svg width={160} height={160} viewBox="0 0 247 241" fill="none">
@@ -59,6 +58,7 @@ const FaceHappy = () => (
 );
 
 import { Ionicons } from '@expo/vector-icons';
+import { calculateUserTrend, getHomeStatusPhrase, UserTrendState } from '../services/TrendService';
 
 interface HomePageProps {
   userName?: string;
@@ -98,18 +98,30 @@ const getExerciseImagePNG = (imagePath: string) => {
   }
 };
 
-export default function HomePage({ userName, setCurrentScreen, testCompleted, currentMood, onMoodPress, onExercisePress, userActivities }: HomePageProps) {
-  const today = React.useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
+export default function HomePage({ 
+  userName, 
+  setCurrentScreen, 
+  testCompleted, 
+  currentMood, 
+  onMoodPress, 
+  onExercisePress, 
+  userActivities 
+}: HomePageProps) {
+  const today = new Date().toISOString().split('T')[0];
   const [dailySlots, setDailySlots] = React.useState<DailySlotResult | null>(null);
   const [completedIds, setCompletedIds] = React.useState<string[]>([]);
-  const [trendState, setTrendState] = React.useState<TrendState | null>(null);
-
-  const activeIcon = currentMood || trendState?.icon;
-  const iconScale = React.useRef(new Animated.Value(1)).current;
+  const [activeIcon, setActiveIcon] = React.useState<'default' | 'sad' | 'neutral' | 'happy'>('default');
+  
+  // Mood icon animation
   const iconOpacity = React.useRef(new Animated.Value(1)).current;
+  const iconScale = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    if (currentMood === 'sad') setActiveIcon('sad');
+    else if (currentMood === 'neutral') setActiveIcon('neutral');
+    else if (currentMood === 'happy') setActiveIcon('happy');
+    else setActiveIcon('default');
+  }, [currentMood]);
 
   React.useEffect(() => {
     iconOpacity.setValue(0);
@@ -139,9 +151,6 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
 
       const completed = await DailyExerciseService.getCompletedExercisesToday(today);
       setCompletedIds(completed);
-      
-      const trend = await TrendService.getUserTrend(user.id, user.createdAt);
-      setTrendState(trend);
     } catch (error) {
       console.error('Errore nel caricamento esercizi giornalieri:', error);
     }
@@ -166,6 +175,12 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
 
   const allExercisesDone = dailySlots !== null && displayedExercises.length === 0;
 
+  const userTrend: UserTrendState = React.useMemo(() => 
+    calculateUserTrend(userActivities, currentMood, completedIds.length), 
+    [userActivities, currentMood, completedIds.length]
+  );
+  const statusPhrase = getHomeStatusPhrase(userTrend);
+
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -184,24 +199,36 @@ export default function HomePage({ userName, setCurrentScreen, testCompleted, cu
               <CircleSvg />
             </View>
             <Animated.View style={[styles.moodIconBackground, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
-              {currentMood === 'sad' || (!currentMood && trendState?.icon === 'sad') ? <FaceSad /> : 
-               currentMood === 'neutral' || (!currentMood && trendState?.icon === 'neutral') ? <FaceNeutral /> : 
-               currentMood === 'happy' || (!currentMood && trendState?.icon === 'happy') ? <FaceHappy /> :
+              {currentMood === 'sad' ? <FaceSad /> : 
+               currentMood === 'neutral' ? <FaceNeutral /> : 
+               currentMood === 'happy' ? <FaceHappy /> :
                <FacePurpleSmile />}
             </Animated.View>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Explanatory Phrase */}
-      {trendState && (
-        <View style={[styles.trendMessageContainer, { backgroundColor: trendState.bgColor }]}>
-          <Ionicons name="sparkles-outline" size={24} color={trendState.textColor} style={styles.trendMessageIcon} />
-          <Text style={[styles.trendMessageText, { color: trendState.textColor, fontStyle: 'italic' }]}>
-            "{trendState.message}"
-          </Text>
+      {/* Status Box */}
+      <View style={styles.trendSection}>
+        <View style={styles.trendCard}>
+          <View style={styles.trendIconContainer}>
+            <Ionicons 
+              name={
+                userTrend === 'POSITIVE' ? 'sparkles-outline' : 
+                userTrend === 'IMPROVING' ? 'trending-up-outline' : 
+                userTrend === 'HARDER' ? 'leaf-outline' : 
+                userTrend === 'BOOTSTRAP' ? 'map-outline' : 
+                'sunny-outline'
+              } 
+              size={22} 
+              color="#9381FF" 
+            />
+          </View>
+          <View style={styles.trendTextContainer}>
+            <Text style={styles.statusText}>"{statusPhrase}"</Text>
+          </View>
         </View>
-      )}
+      </View>
 
       {/* Daily Exercises */}
       <View style={styles.exercisesSection}>
@@ -323,35 +350,6 @@ const styles = StyleSheet.create({
     color: 'white',
     lineHeight: 31,
   },
-  trendBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 8,
-  },
-  trendBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  trendMessageContainer: {
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendMessageIcon: {
-    marginRight: 12,
-  },
-  trendMessageText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
   progressContainer: {
     position: 'relative',
   },
@@ -384,156 +382,78 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  homeAvatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  moodIcon: {
-    zIndex: 2,
-  },
-  moodButton: {
-    marginHorizontal: 10,
-    borderRadius: 40,
-    padding: 10,
-  },
-  selectedMoodButton: {
-    backgroundColor: 'rgba(139, 124, 246, 0.1)',
-  },
   exercisesSection: {
     marginBottom: 30,
   },
+  trendSection: {
+    marginBottom: 25,
+  },
+  trendCard: {
+    backgroundColor: '#e5e3fd',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  trendTextContainer: {
+    flex: 1,
+  },
+  statusText: {
+    fontSize: 16,
+    color: '#0D0140',
+    fontStyle: 'italic',
+    fontWeight: 'normal',
+  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#0D0140',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   exerciseCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 16,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   exerciseImageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: 16,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#F0F0F0',
   },
   exerciseCardImage: {
-    width: 60,
-    height: 60,
+    width: '100%',
+    height: '100%',
   },
   exerciseIcon: {
     width: 60,
     height: 60,
     borderRadius: 12,
-    marginRight: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  bodyScanIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: '#E3F2FD',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  bodyScanWave: {
-    position: 'absolute',
-    top: 20,
-    left: 15,
-    width: 30,
-    height: 20,
-    backgroundColor: '#2196F3',
-    borderRadius: 15,
-    opacity: 0.6,
-  },
-  writingIconContainer: {
-    backgroundColor: '#FFF3E0',
+    marginRight: 15,
   },
   exerciseContent: {
     flex: 1,
-  },
-  exerciseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0D0140',
-    marginBottom: 4,
-  },
-  exerciseDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  exerciseTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  completionCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  completionIcon: {
-    marginBottom: 16,
-    alignItems: 'center',
+    marginLeft: 12,
     justifyContent: 'center',
-  },
-  completionImage: {
-    width: 80,
-    height: 80,
-  },
-  completionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  completionMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  completionSubMessage: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  microLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#9381FF',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    letterSpacing: 0.8,
   },
   labelRow: {
     flexDirection: 'row',
@@ -541,18 +461,69 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flexWrap: 'wrap',
   },
+  microLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9381FF',
+    letterSpacing: 0.5,
+    marginRight: 8,
+  },
   recommendedBadge: {
-    backgroundColor: '#9381FF',
+    backgroundColor: '#e5e3fd',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    marginLeft: 8,
-    marginBottom: 4,
   },
   recommendedBadgeText: {
     fontSize: 9,
-    fontWeight: '900',
-    color: 'white',
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    color: '#9381FF',
+  },
+  exerciseTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0D0140',
+    marginBottom: 4,
+  },
+  exerciseDescription: {
+    fontSize: 13,
+    color: '#524B6B',
+    marginBottom: 8,
+  },
+  exerciseTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  completionCard: {
+    backgroundColor: '#EEF9EF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  completionIcon: {
+    width: 60,
+    height: 60,
+    marginBottom: 16,
+  },
+  completionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  completionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2D6A3B',
+    marginBottom: 8,
+  },
+  completionMessage: {
+    fontSize: 14,
+    color: '#4A7A54',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
