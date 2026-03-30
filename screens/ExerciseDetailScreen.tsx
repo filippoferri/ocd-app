@@ -2259,6 +2259,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
         durationSeconds,
       };
       await ExerciseServiceAdapter.saveExerciseProgress(progress);
+      
+      // LOG ACTIVITY FOR DIARY AND PROFILE
+      // This is the missing piece that was preventing the exercise from appearing in the diary
+      await WorkoutService.completeExercise(exercise, notes);
     } catch (error) {
       console.error('❌ [ExerciseDetail] Errore salvataggio (non bloccante):', error);
     }
