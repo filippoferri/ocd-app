@@ -41,7 +41,9 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
       setUserEmail(email);
       setCurrentScreen('success');
     } catch (error) {
-      Alert.alert('Errore', error instanceof Error ? error.message : 'Errore durante la registrazione');
+      console.error("Signup error in AuthFlow:", error);
+      // NON mostriamo più l'alert qui, lasciamo che EmailSignupScreen lo mostri inline
+      throw error;
     }
   };
 

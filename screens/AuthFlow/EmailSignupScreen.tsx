@@ -30,12 +30,12 @@ export default function EmailSignupScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ form?: string; name?: string; email?: string; password?: string }>({});
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
   const validateForm = (): boolean => {
-    const newErrors: { name?: string; email?: string; password?: string } = {};
+    const newErrors: { form?: string; name?: string; email?: string; password?: string } = {};
 
     if (!fullName.trim()) {
       newErrors.name = 'Il nome è obbligatorio';
@@ -64,10 +64,15 @@ export default function EmailSignupScreen({
     }
 
     setIsSubmitting(true);
+    setErrors(prev => ({ ...prev, form: undefined })); // clear prior errors
     try {
       await onSignup(fullName.trim(), email.trim().toLowerCase(), password);
-    } catch {
-       // handled by parent
+    } catch (error) {
+       // Mostriamo l'errore a schermo (es. password debole, email esistente)
+       setErrors(prev => ({ 
+         ...prev, 
+         form: error instanceof Error ? error.message : 'Errore imprevisto durante la registrazione.' 
+       }));
     } finally {
       setIsSubmitting(false);
     }
@@ -93,6 +98,13 @@ export default function EmailSignupScreen({
             <Text style={styles.subtitle}>
               Crea un account per iniziare il tuo percorso.
             </Text>
+
+            {errors.form && (
+              <View style={styles.generalErrorContainer}>
+                <Ionicons name="warning" size={20} color="#E53935" />
+                <Text style={styles.generalErrorText}>{errors.form}</Text>
+              </View>
+            )}
 
             <View style={styles.form}>
               <View style={styles.inputContainer}>
@@ -269,7 +281,22 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: '#E53935',
-    marginTop: 2,
+    marginTop: 4,
+  },
+  generalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  generalErrorText: {
+    flex: 1,
+    color: '#E53935',
+    fontSize: 14,
+    lineHeight: 20,
   },
   passwordContainer: {
     flexDirection: 'row',
