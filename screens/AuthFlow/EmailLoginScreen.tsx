@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EmailLoginScreenProps {
@@ -33,6 +33,7 @@ export default function EmailLoginScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const passwordInputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -64,7 +65,14 @@ export default function EmailLoginScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <TouchableOpacity 
+        onPress={onBack} 
+        style={[styles.backButton, { top: insets.top > 0 ? insets.top + 10 : 40 }]}
+      >
+        <Ionicons name="arrow-back" size={24} color="#333" />
+      </TouchableOpacity>
+      
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -75,10 +83,6 @@ export default function EmailLoginScreen({
           contentContainerStyle={{ flexGrow: 1 }}
         >
           <View style={styles.content}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-            
             <Text style={styles.title}>Email Login</Text>
             <Text style={styles.subtitle}>
               Inserisci le tue credenziali per accedere.
@@ -189,10 +193,9 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 40,
     left: 24,
     padding: 8,
-    zIndex: 10,
+    zIndex: 20,
   },
   title: {
     fontSize: 28,

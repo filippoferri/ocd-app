@@ -4,8 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface CheckEmailScreenProps {
@@ -20,7 +20,7 @@ export default function CheckEmailScreen({
   onResendEmail,
 }: CheckEmailScreenProps) {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
         <Text style={styles.title}>Controlla la tua email</Text>
         <Text style={styles.subtitle}>

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AuthService from '../../services/AuthService';
 
@@ -35,7 +36,7 @@ export default function SignupScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewContext style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Benvenuto su DOC Relief</Text>
@@ -79,7 +80,7 @@ export default function SignupScreen({
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </SafeAreaViewContext>
   );
 }
 

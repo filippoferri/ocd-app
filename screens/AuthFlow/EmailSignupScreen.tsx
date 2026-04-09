@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EmailSignupScreenProps {
@@ -33,6 +33,7 @@ export default function EmailSignupScreen({
   const [errors, setErrors] = useState<{ form?: string; name?: string; email?: string; password?: string }>({});
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   const validateForm = (): boolean => {
     const newErrors: { form?: string; name?: string; email?: string; password?: string } = {};
@@ -79,7 +80,14 @@ export default function EmailSignupScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <TouchableOpacity 
+        onPress={onBack} 
+        style={[styles.backButton, { top: insets.top > 0 ? insets.top + 10 : 40 }]}
+      >
+        <Ionicons name="arrow-back" size={24} color="#333" />
+      </TouchableOpacity>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -90,10 +98,6 @@ export default function EmailSignupScreen({
           contentContainerStyle={{ flexGrow: 1 }}
         >
           <View style={styles.content}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-
             <Text style={styles.title}>Registrati con Email</Text>
             <Text style={styles.subtitle}>
               Crea un account per iniziare il tuo percorso.
@@ -236,10 +240,9 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 40,
     left: 24,
     padding: 8,
-    zIndex: 10,
+    zIndex: 20,
   },
   title: {
     fontSize: 28,
