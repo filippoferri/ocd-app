@@ -212,7 +212,7 @@ const exercises = [
     intro_text: 'La scrittura terapeutica è uno strumento potente per elaborare pensieri ed emozioni. Attraverso la scrittura libera, potrai esplorare i tuoi sentimenti, chiarire i pensieri e trovare nuove prospettive sui problemi.',
     benefits_text: '• Chiarisce pensieri ed emozioni\n• Riduce lo stress e l\'ansia\n• Migliora l\'autoconsapevolezza\n• Facilita l\'elaborazione emotiva\n• Sviluppa nuove prospettive',
     objective_text: 'Elaborare pensieri ed emozioni attraverso la scrittura',
-    duration: 25,
+    duration: 0,
     image: './assets/exercises/scrittura.png',
     steps: [
       {

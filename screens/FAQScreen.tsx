@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: "Cosa causa il DOC?",
-    answer: "Sebbene la causa esatta sia sconosciuta, probabilmente deriva da una combinazione di fattori genetici, anomalie cerebrali e fattori ambientali. Non è causato solo da azioni o pensieri."
+    answer: "Sebbene la causa esatta sia sconosciuta, probabilmente deriva da una combinazione di fattori genetici, neurodivergenze e fattori ambientali. Non è causato solo da azioni o pensieri."
   },
   {
     question: "Il DOC è curabile?",

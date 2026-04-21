@@ -214,7 +214,7 @@ class ExerciseService {
       introText: 'La scrittura terapeutica è uno strumento potente per elaborare pensieri ed emozioni. Attraverso la scrittura libera, potrai esplorare i tuoi sentimenti, chiarire i pensieri e trovare nuove prospettive sui problemi.',
       benefitsText: '• Chiarisce pensieri ed emozioni\n• Riduce lo stress e l\'ansia\n• Migliora l\'autoconsapevolezza\n• Facilita l\'elaborazione emotiva\n• Sviluppa nuove prospettive',
       objectiveText: 'Elaborare pensieri ed emozioni attraverso la scrittura',
-      duration: 25,
+      duration: 0,
       image: './assets/exercises/scrittura.png',
       steps: [
         {
@@ -342,10 +342,10 @@ class ExerciseService {
     },
     {
       id: 'parcheggio-pensieri',
-      name: 'Parcheggio dei pensieri',
-      introText: 'Il "Parcheggio dei pensieri" (Thought Parking) ti aiuta a gestire i pensieri intrusivi, le idee improvvise o le distrazioni estraendoli dalla mente e "parcheggiandoli" in un luogo sicuro per occupartene dopo.',
+      name: 'Defusione del pensiero',
+      introText: 'La "Defusione del pensiero" ti aiuta a gestire i pensieri intrusivi, le idee improvvise o le distrazioni estraendoli dalla mente e osservandoli in un luogo sicuro per occupartene dopo.',
       benefitsText: '• Favorisce il distacco cognitivo\n• Pulisce la mente dalle distrazioni immediate\n• Allenta la pressione del dover ricordare tutto ora\n• Tiene traccia delle preoccupazioni per affrontarle con lucidità\n• Previene il rimuginio continuo',
-      objectiveText: 'Parcheggiare temporaneamente i pensieri per liberare la memoria di lavoro',
+      objectiveText: 'Distaccarsi temporaneamente dai pensieri per liberare la memoria di lavoro',
       duration: 0,
       category: 'thoughts',
       isGuided: false,
