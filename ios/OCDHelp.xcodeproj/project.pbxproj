@@ -372,11 +372,13 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = org.name.OCDHelp;
-				PRODUCT_NAME = OCDHelp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.filippoferri.docrelief";
+				PRODUCT_NAME = "DOCRelief";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_ENTITLEMENTS = OCDHelp/DOCRelief.entitlements;
 			};
 			name = Debug;
 		};
@@ -397,10 +399,12 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = org.name.OCDHelp;
-				PRODUCT_NAME = OCDHelp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.filippoferri.docrelief";
+				PRODUCT_NAME = "DOCRelief";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_ENTITLEMENTS = OCDHelp/DOCRelief.entitlements;
 			};
 			name = Release;
 		};

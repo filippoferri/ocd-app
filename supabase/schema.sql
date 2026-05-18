@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   name TEXT,
   role TEXT DEFAULT 'user',
   onboarding_data JSONB DEFAULT '{}'::jsonb, -- Dati dell'onboarding salvati qui
+  onboarding_completed BOOLEAN DEFAULT false,
+  wants_ocd_test BOOLEAN DEFAULT false,
+  avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -51,7 +54,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 3. Tabella ATTIVITÀ UTENTE (Diario: Ossessioni, Compulsioni, Test)
-CREATE TABLE IF NOT EXISTS user_activities (
+CREATE TABLE IF NOT EXISTS activities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date DATE NOT NULL,
@@ -63,8 +66,8 @@ CREATE TABLE IF NOT EXISTS user_activities (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_activities_user_id ON user_activities(user_id);
-CREATE INDEX IF NOT EXISTS idx_activities_date ON user_activities(date);
+CREATE INDEX IF NOT EXISTS idx_activities_user_id ON activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(date);
 
 -- 4. Tabella PROGRESSO ESERCIZI
 CREATE TABLE IF NOT EXISTS exercise_progress (
@@ -83,7 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_exercise_progress_user_id ON exercise_progress(us
 -- Abilita RLS su tutte le tabelle
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercise_progress ENABLE ROW LEVEL SECURITY;
 
 -- ESERCIZI: Lettura pubblica, Modifica solo admin (qui semplificato a authenticated per demo)
@@ -95,14 +98,27 @@ CREATE POLICY "Users view own profile" ON profiles FOR SELECT USING (auth.uid() 
 CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- ATTIVITÀ: Utenti vedono e modificano solo le proprie
-CREATE POLICY "Users view own activities" ON user_activities FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users insert own activities" ON user_activities FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users update own activities" ON user_activities FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users delete own activities" ON user_activities FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users view own activities" ON activities FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own activities" ON activities FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own activities" ON activities FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users delete own activities" ON activities FOR DELETE USING (auth.uid() = user_id);
 
 -- PROGRESSO: Utenti vedono e modificano solo il proprio
 CREATE POLICY "Users view own progress" ON exercise_progress FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users insert own progress" ON exercise_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 6. FUNZIONI E RPC
+CREATE OR REPLACE FUNCTION delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- L'utente loggato cancella se stesso da auth.users
+  -- Le altre tabelle verranno svuotate a cascata (ON DELETE CASCADE)
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;
 
 -- Dati iniziali Esercizi (Se servono)
 -- ... (inserire qui gli INSERT se necessario)

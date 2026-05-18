@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, ActivityIndicator } from 'react-native';
 import { Svg, G, Circle, Path } from 'react-native-svg';
 import { Exercise } from '../types/Exercise';
 import { UserActivity } from '../types/Activity';
@@ -110,6 +110,7 @@ export default function HomePage({
   const [dailySlots, setDailySlots] = React.useState<DailySlotResult | null>(null);
   const [completedIds, setCompletedIds] = React.useState<string[]>([]);
   const [activeIcon, setActiveIcon] = React.useState<'default' | 'sad' | 'neutral' | 'happy'>('default');
+  const [isLoading, setIsLoading] = React.useState(true);
   
   // Mood icon animation
   const iconOpacity = React.useRef(new Animated.Value(1)).current;
@@ -141,9 +142,13 @@ export default function HomePage({
   }, [activeIcon]);
 
   const loadDailyData = React.useCallback(async () => {
+    setIsLoading(true);
     try {
       const user = await AuthService.getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       const slots = await DailyExerciseService.getDailyExercises(user.id);
       setDailySlots(slots);
@@ -152,6 +157,8 @@ export default function HomePage({
       setCompletedIds(completed);
     } catch (error) {
       console.error('Errore nel caricamento esercizi giornalieri:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, [today]);
 
@@ -233,80 +240,88 @@ export default function HomePage({
       <View style={styles.exercisesSection}>
         <Text style={styles.sectionTitle}>Esercizi del giorno</Text>
         
-        {displayedExercises.map((exercise, index) => {
-          // Micro-label logic basata sulla fase della giornata e utilità
-          let microLabel = '';
-          if (exercise.journeyPhase === 'start_day') microLabel = 'PER INIZIARE';
-          else if (exercise.journeyPhase === 'end_day') microLabel = 'PER CHIUDERE LA GIORNATA';
-          else if (exercise.usageType === 'emergency') microLabel = 'PER EMERGENZA';
-          else if (exercise.duration < 5) microLabel = 'IN POCHI MINUTI';
-          else if (exercise.duration >= 5) microLabel = 'PER RILASSARTI';
-          else microLabel = 'PER TE';
-
-          const isRecommended = index === 0;
-
-          return (
-            <TouchableOpacity
-              key={exercise.id}
-              style={styles.exerciseCard}
-              onPress={() => onExercisePress(exercise)}
-            >
-              <View style={styles.exerciseImageContainer}>
-                <Image
-                  source={getExerciseImagePNG(exercise.image)}
-                  style={styles.exerciseCardImage}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={styles.exerciseContent}>
-                <View style={styles.labelRow}>
-                  {microLabel ? <Text style={styles.microLabel}>{microLabel}</Text> : null}
-                  {isRecommended && <View style={styles.recommendedBadge}><Text style={styles.recommendedBadgeText}>CONSIGLIATO</Text></View>}
-                </View>
-                <Text style={styles.exerciseTitle}>{exercise.name}</Text>
-                <Text style={styles.exerciseDescription}>{exercise.objectiveText}</Text>
-                <View style={styles.exerciseTime}>
-                  <Ionicons name="time" size={16} color="#666" />
-                  <Text style={styles.timeText}>{exercise.duration} min</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {allExercisesDone && testCompleted && (
-          <View style={styles.completionCard}>
-            <View style={styles.completionIcon}>
-              <Image 
-                source={require('../assets/completed.png')} 
-                style={styles.completionImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.completionTitle}>Ottimo lavoro.</Text>
-            <Text style={styles.completionMessage}>
-              Hai completato gli esercizi di oggi.{"\n"}Stai allenando il modo in cui rispondi ai pensieri e alle sensazioni.
-            </Text>
+        {isLoading ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#9381FF" />
           </View>
-        )}
+        ) : (
+          <>
+            {displayedExercises.map((exercise, index) => {
+              // Micro-label logic basata sulla fase della giornata e utilità
+              let microLabel = '';
+              if (exercise.journeyPhase === 'start_day') microLabel = 'PER INIZIARE';
+              else if (exercise.journeyPhase === 'end_day') microLabel = 'PER CHIUDERE LA GIORNATA';
+              else if (exercise.usageType === 'emergency') microLabel = 'PER EMERGENZA';
+              else if (exercise.duration < 5) microLabel = 'IN POCHI MINUTI';
+              else if (exercise.duration >= 5) microLabel = 'PER RILASSARTI';
+              else microLabel = 'PER TE';
 
-        {!testCompleted && (
-          <TouchableOpacity 
-            style={styles.exerciseCard}
-            onPress={() => setCurrentScreen('OCDTest')}
-          >
-            <View style={[styles.exerciseIcon, { backgroundColor: '#e5e3fd' }]}>
-              <Ionicons name="clipboard-outline" size={24} color="#9381ff" />
-            </View>
-            <View style={styles.exerciseContent}>
-              <Text style={styles.exerciseTitle}>Test DOC</Text>
-              <Text style={styles.exerciseDescription}>Valutazione disturbo ossessivo compulsivo</Text>
-              <View style={styles.exerciseTime}>
-                <Ionicons name="time" size={16} color="#666" />
-                <Text style={styles.timeText}>10 min</Text>
+              const isRecommended = index === 0;
+
+              return (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={styles.exerciseCard}
+                  onPress={() => onExercisePress(exercise)}
+                >
+                  <View style={styles.exerciseImageContainer}>
+                    <Image
+                      source={getExerciseImagePNG(exercise.image)}
+                      style={styles.exerciseCardImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                  <View style={styles.exerciseContent}>
+                    <View style={styles.labelRow}>
+                      {microLabel ? <Text style={styles.microLabel}>{microLabel}</Text> : null}
+                      {isRecommended && <View style={styles.recommendedBadge}><Text style={styles.recommendedBadgeText}>CONSIGLIATO</Text></View>}
+                    </View>
+                    <Text style={styles.exerciseTitle}>{exercise.name}</Text>
+                    <Text style={styles.exerciseDescription}>{exercise.objectiveText}</Text>
+                    <View style={styles.exerciseTime}>
+                      <Ionicons name="time" size={16} color="#666" />
+                      <Text style={styles.timeText}>{exercise.duration} min</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {allExercisesDone && testCompleted && (
+              <View style={styles.completionCard}>
+                <View style={styles.completionIcon}>
+                  <Image 
+                    source={require('../assets/completed.png')} 
+                    style={styles.completionImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.completionTitle}>Ottimo lavoro.</Text>
+                <Text style={styles.completionMessage}>
+                  Hai completato gli esercizi di oggi.{"\n"}Stai allenando il modo in cui rispondi ai pensieri e alle sensazioni.
+                </Text>
               </View>
-            </View>
-          </TouchableOpacity>
+            )}
+
+            {!testCompleted && (
+              <TouchableOpacity 
+                style={styles.exerciseCard}
+                onPress={() => setCurrentScreen('OCDTest')}
+              >
+                <View style={[styles.exerciseIcon, { backgroundColor: '#e5e3fd' }]}>
+                  <Ionicons name="clipboard-outline" size={24} color="#9381ff" />
+                </View>
+                <View style={styles.exerciseContent}>
+                  <Text style={styles.exerciseTitle}>Test DOC</Text>
+                  <Text style={styles.exerciseDescription}>Valutazione disturbo ossessivo compulsivo</Text>
+                  <View style={styles.exerciseTime}>
+                    <Ionicons name="time" size={16} color="#666" />
+                    <Text style={styles.timeText}>10 min</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
       </ScrollView>

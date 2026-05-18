@@ -37,10 +37,15 @@ export default function PolicyScreen({ onClose }: PolicyScreenProps) {
 
           <View style={[styles.divider, { height: 1, backgroundColor: '#EEE', marginVertical: 20 }]} />
 
+          <Text style={styles.sectionTitle}>AVVERTENZA MEDICA IMPORTANTE</Text>
+          <Text style={styles.paragraph}>
+            L'applicazione Doc Relief <Text style={{fontWeight: 'bold'}}>non è un dispositivo medico</Text> e non sostituisce in alcun modo il parere, la diagnosi o il trattamento di un medico o di un professionista della salute mentale.
+          </Text>
+
           <Text style={styles.sectionTitle}>1. TITOLARE DEL TRATTAMENTO E DPO</Text>
           <Text style={styles.paragraph}>
             Il Titolare del trattamento è <Text style={{fontWeight: 'bold'}}>Filippo Ferri</Text>, con sede in <Text style={{fontWeight: 'bold'}}>Corso Vittorio Emanuele II 198 (Pesaro)</Text>. 
-            {"\n"}Email di contatto: <Text style={{fontWeight: 'bold'}}>filippo.ferri@example.com</Text> (inserire email definitiva).
+            {"\n"}Email di contatto: <Text style={{fontWeight: 'bold'}}>support@docrelief.com</Text>.
           </Text>
 
           <Text style={styles.sectionTitle}>2. TIPOLOGIA DI DATI RACCOLTI</Text>

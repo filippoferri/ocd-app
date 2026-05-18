@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Shadow } from '../config/Theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PrivacyScreenProps {
   onClose: () => void;
@@ -12,7 +13,21 @@ const { width } = Dimensions.get('window');
 
 export default function PrivacyScreen({ onClose }: PrivacyScreenProps) {
   const insets = useSafeAreaInsets();
-  const [helpImprove, setHelpImprove] = useState(true);
+  const [helpImprove, setHelpImprove] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('helpImproveAI').then(val => {
+      if (val !== null) {
+        setHelpImprove(val === 'true');
+      }
+    });
+  }, []);
+
+  const toggleHelpImprove = async () => {
+    const newVal = !helpImprove;
+    setHelpImprove(newVal);
+    await AsyncStorage.setItem('helpImproveAI', newVal.toString());
+  };
 
   return (
     <View style={styles.container}>
@@ -37,7 +52,7 @@ export default function PrivacyScreen({ onClose }: PrivacyScreenProps) {
           <View style={styles.toggleRow}>
             <Text style={styles.question}>Aiutaci a migliorare DOC Relief</Text>
             <TouchableOpacity 
-              onPress={() => setHelpImprove(!helpImprove)}
+              onPress={toggleHelpImprove}
               style={[styles.toggle, helpImprove && styles.toggleActive]}
             >
               <View style={[styles.toggleThumb, helpImprove && styles.toggleThumbActive]} />
